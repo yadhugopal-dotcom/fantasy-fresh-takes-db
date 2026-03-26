@@ -1,25 +1,29 @@
-import { Manrope, Sora } from "next/font/google";
+import { Outfit, Work_Sans } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-outfit",
+  display: "swap",
 });
 
-const sora = Sora({
+const workSans = Work_Sans({
   subsets: ["latin"],
-  variable: "--font-sora",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-work-sans",
+  display: "swap",
 });
 
 export const metadata = {
-  title: "Fresh takes dashboard",
-  description: "Pocket FM fresh takes planning and production dashboard",
+  title: "Fresh Takes — Pocket FM",
+  description: "Weekly releases, POD output, and production at a glance",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${manrope.variable} ${sora.variable}`}>{children}</body>
+      <body className={`${outfit.variable} ${workSans.variable}`}>{children}</body>
     </html>
   );
 }
