@@ -1132,12 +1132,14 @@ function TrackerTable({
 function RosterManager({
   writerConfig,
   editable,
+  isFutureWeek,
   onWriterNameChange,
   onWriterRoleChange,
   onWriterMovePod,
-  onWriterArchive,
-  onWriterRestore,
+  onDeleteWriter,
   onAddWriter,
+  onAddPod,
+  onDeletePod,
 }) {
   const [dragWriter, setDragWriter] = useState(null);
   const [dropPodId, setDropPodId] = useState("");
@@ -1147,20 +1149,6 @@ function RosterManager({
         .filter((pod) => pod?.active !== false && isVisiblePlannerPodLeadName(pod?.cl))
         .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)),
     [writerConfig]
-  );
-
-  const archivedWriters = useMemo(
-    () =>
-      pods.flatMap((pod) =>
-        (Array.isArray(pod.writers) ? pod.writers : [])
-          .filter((writer) => writer?.active === false)
-          .map((writer) => ({
-            ...writer,
-            podId: pod.id,
-            podName: pod.cl,
-          }))
-      ),
-    [pods]
   );
 
   if (!editable) {
@@ -1190,8 +1178,7 @@ function RosterManager({
           Roster Manager
         </div>
         <div style={{ fontSize: 13, color: "var(--ink)", marginTop: 4 }}>
-          Add writers, drag them between pods, set their role, and archive or restore them without changing past week
-          snapshots.
+          Add writers, move them between pods, and manage your roster.
         </div>
       </div>
 
@@ -1246,18 +1233,38 @@ function RosterManager({
                   <div style={{ fontSize: 10, opacity: 0.8 }}>Active writers: {activeWriters.length}</div>
                 </div>
 
-                <button
-                  onClick={() => onAddWriter(pod.id)}
-                  style={{
-                    ...tinyBtn,
-                    width: "auto",
-                    height: "auto",
-                    padding: "5px 8px",
-                    borderRadius: 999,
-                  }}
-                >
-                  + Add Writer
-                </button>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <button
+                    onClick={() => onAddWriter(pod.id)}
+                    style={{
+                      ...tinyBtn,
+                      width: "auto",
+                      height: "auto",
+                      padding: "5px 8px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    + Add Writer
+                  </button>
+                  <button
+                    onClick={() => isFutureWeek && onDeletePod(pod.id)}
+                    title={isFutureWeek ? `Delete POD "${pod.cl}"` : "Can only delete PODs on future weeks"}
+                    style={{
+                      ...tinyBtn,
+                      width: "auto",
+                      height: "auto",
+                      padding: "5px 8px",
+                      borderRadius: 999,
+                      opacity: isFutureWeek ? 1 : 0.4,
+                      cursor: isFutureWeek ? "pointer" : "not-allowed",
+                      background: "rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      borderColor: "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div style={{ padding: 10, display: "grid", gap: 8 }}>
@@ -1309,18 +1316,21 @@ function RosterManager({
                         ))}
                       </select>
                       <button
-                        onClick={() => onWriterArchive(pod.id, writer.id)}
+                        onClick={() => isFutureWeek && onDeleteWriter(pod.id, writer.id)}
+                        title={isFutureWeek ? "Delete writer" : "Can only delete writers on future weeks"}
                         style={{
                           ...tinyBtn,
                           width: "auto",
                           height: "auto",
                           padding: "8px 10px",
-                          color: "var(--red)",
-                          borderColor: "var(--red-bg)",
-                          background: "var(--red-bg)",
+                          color: isFutureWeek ? "var(--red)" : "var(--muted)",
+                          borderColor: isFutureWeek ? "var(--red-bg)" : "var(--border)",
+                          background: isFutureWeek ? "var(--red-bg)" : "var(--card-alt)",
+                          cursor: isFutureWeek ? "pointer" : "not-allowed",
+                          opacity: isFutureWeek ? 1 : 0.5,
                         }}
                       >
-                        Archive
+                        Delete
                       </button>
                     </div>
                   ))
@@ -1333,55 +1343,28 @@ function RosterManager({
             </div>
           );
         })}
-      </div>
 
-      <div
-        style={{
-          marginTop: 12,
-          borderTop: "1px solid var(--border)",
-          paddingTop: 12,
-        }}
-      >
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>Archived Writers</div>
-        {archivedWriters.length > 0 ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {archivedWriters.map((writer) => (
-              <div
-                key={writer.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  padding: "8px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--card-alt)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{writer.name}</div>
-                  <div style={{ fontSize: 10, color: "var(--muted)" }}>
-                    Last pod: {writer.podName} · Role: {writer.role || "Writer"}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => onWriterRestore(writer.podId, writer.id)}
-                  style={{
-                    ...tinyBtn,
-                    width: "auto",
-                    height: "auto",
-                    padding: "8px 10px",
-                  }}
-                >
-                  Restore
-                </button>
-              </div>
-            ))}
+        {isFutureWeek && (
+          <div
+            onClick={onAddPod}
+            style={{
+              border: "2px dashed var(--border)",
+              borderRadius: "var(--radius-md)",
+              overflow: "hidden",
+              background: "var(--card-alt)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 80,
+              cursor: "pointer",
+              color: "var(--muted)",
+              fontSize: 13,
+              fontWeight: 600,
+              gap: 6,
+            }}
+          >
+            + Add POD
           </div>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>No archived writers.</div>
         )}
       </div>
     </div>
@@ -2197,47 +2180,49 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
     }));
   }
 
-  function archiveWriter(podId, writerId) {
-    if (!canEditRoster) {
-      return;
-    }
-
+  function deleteWriter(podId, writerId) {
+    if (!canEditRoster) return;
     setWriterConfig((current) => ({
       ...current,
       pods: current.pods.map((pod) =>
         pod.id !== podId
           ? pod
-          : {
-              ...pod,
-              writers: pod.writers.map((writer, index) =>
-                writer.id !== writerId
-                  ? { ...writer, displayOrder: index }
-                  : { ...writer, active: false, displayOrder: index }
-              ),
-            }
+          : { ...pod, writers: pod.writers.filter((w) => w.id !== writerId) }
       ),
     }));
   }
 
-  function restoreWriter(podId, writerId) {
-    if (!canEditRoster) {
-      return;
-    }
+  const POD_COLORS = ["#8b5e3c", "#3b6b8c", "#6b3b6b", "#3b6b4e", "#8c6b3b", "#3b4e6b", "#6b4e3b", "#4e6b6b"];
 
+  function addPod() {
+    if (!canEditRoster) return;
+    const name = window.prompt("Enter POD lead name:");
+    if (!name || !name.trim()) return;
+    const existingCount = writerConfig?.pods?.length || 0;
+    const color = POD_COLORS[existingCount % POD_COLORS.length];
     setWriterConfig((current) => ({
       ...current,
-      pods: current.pods.map((pod) =>
-        pod.id !== podId
-          ? pod
-          : {
-              ...pod,
-              writers: pod.writers.map((writer, index) =>
-                writer.id !== writerId
-                  ? { ...writer, displayOrder: index }
-                  : { ...writer, active: true, displayOrder: index }
-              ),
-            }
-      ),
+      pods: [
+        ...(current.pods || []),
+        {
+          id: `pod-${Date.now()}`,
+          cl: name.trim(),
+          color,
+          writers: [],
+          active: true,
+          displayOrder: existingCount,
+        },
+      ],
+    }));
+  }
+
+  function deletePod(podId) {
+    if (!canEditRoster) return;
+    const pod = writerConfig?.pods?.find((p) => p.id === podId);
+    if (!pod || !window.confirm(`Delete POD "${pod.cl}" and all its writers?`)) return;
+    setWriterConfig((current) => ({
+      ...current,
+      pods: current.pods.filter((p) => p.id !== podId),
     }));
   }
 
@@ -2891,12 +2876,14 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
           <RosterManager
             writerConfig={writerConfig}
             editable={canEditRoster}
+            isFutureWeek={weekKey > currentWeekKey}
             onWriterNameChange={updateWriterName}
             onWriterRoleChange={updateWriterRole}
             onWriterMovePod={moveWriterToPod}
-            onWriterArchive={archiveWriter}
-            onWriterRestore={restoreWriter}
+            onDeleteWriter={deleteWriter}
             onAddWriter={addWriterToPod}
+            onAddPod={addPod}
+            onDeletePod={deletePod}
           />
 
           <TrackerTable
