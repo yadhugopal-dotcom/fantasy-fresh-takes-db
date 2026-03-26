@@ -192,12 +192,35 @@ function StatusBanner({ children }) {
   );
 }
 
-function SummaryChips({ summary, notStarted, totalBeats }) {
+function countWritersNotWritingToday(pods, todayIdx) {
+  if (todayIdx < 0 || todayIdx >= 5) return 0;
+  let count = 0;
+  for (const pod of asArray(pods)) {
+    for (const writer of asArray(pod?.writers)) {
+      if (writer?.active === false) continue;
+      const beats = asArray(writer?.beats);
+      const isOoo = beats.some((beat) => {
+        const safeBeat = normalizeBeatForUi(beat, "check");
+        return safeBeat.assets.some((a) => asArray(a?.days)[todayIdx] === "writer_ooo");
+      });
+      if (isOoo) continue;
+      const isWriting = beats.some((beat) => {
+        const safeBeat = normalizeBeatForUi(beat, "check");
+        return safeBeat.assets.some((a) => asArray(a?.days)[todayIdx] === "writing");
+      });
+      if (!isWriting) count += 1;
+    }
+  }
+  return count;
+}
+
+function SummaryChips({ summary, notStarted, totalBeats, notWritingTodayCount }) {
   const safeSummary = summary && typeof summary === "object" ? summary : EMPTY_STAGE_SUMMARY;
   const beats = Number(totalBeats || 0);
   const production = Number(safeSummary.production || 0) + Number(safeSummary.live_on_meta || 0);
   const live = Number(safeSummary.live_on_meta || 0);
   const ooo = Number(safeSummary.writer_ooo || 0);
+  const notWriting = Number(notWritingTodayCount || 0);
 
   const chips = [
     { value: beats, label: "Beats this week", color: "var(--navy)" },
@@ -207,7 +230,7 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
   ];
 
   return (
-    <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
       {chips.map((chip) => (
         <div
           key={chip.label}
@@ -219,7 +242,6 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
             background: "var(--card)",
             borderRadius: "var(--radius-md)",
             border: "1px solid var(--border)",
-            boxShadow: "0 8px 20px rgba(20, 28, 30, 0.05)",
           }}
         >
           <span
@@ -235,6 +257,31 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
           <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{chip.label}</span>
         </div>
       ))}
+      {notWriting > 0 ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 14px",
+            background: "var(--red-bg)",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid rgba(159, 46, 46, 0.25)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              fontFamily: MONO_FONT,
+              color: "var(--red)",
+            }}
+          >
+            {notWriting}
+          </span>
+          <span style={{ fontSize: 10, color: "var(--red)", fontWeight: 700 }}>Not writing today</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2839,7 +2886,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
             </div>
           ) : null}
 
-          <SummaryChips summary={summary} notStarted={notStarted} totalBeats={totalBeats} />
+          <SummaryChips summary={summary} notStarted={notStarted} totalBeats={totalBeats} notWritingTodayCount={countWritersNotWritingToday(pods, todayIdx)} />
 
           <RosterManager
             writerConfig={writerConfig}
