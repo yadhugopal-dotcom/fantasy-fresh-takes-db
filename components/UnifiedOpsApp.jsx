@@ -1264,6 +1264,25 @@ function buildAnalyticsSubtitle(data) {
   return parts.join(" · ");
 }
 
+function classifyPromising(metrics) {
+  const cpiValue = Number(metrics?.cpi?.value);
+  const ctiValue = Number(metrics?.cti?.value);
+  const baselineKeys = ["threeSecPlays", "thruplaysTo3s", "q1Completion", "cpi", "absoluteCompletion", "cti"];
+  let missCount = 0;
+  for (const key of baselineKeys) {
+    const cell = metrics?.[key];
+    if (cell && cell.meetsBenchmark === false) missCount += 1;
+  }
+
+  if (Number.isFinite(cpiValue) && cpiValue < 10 && missCount <= 2) {
+    return { nextStep: "Potential Gen AI", rowTone: "gen-ai" };
+  }
+  if (Number.isFinite(ctiValue) && ctiValue >= 12) {
+    return { nextStep: "Potential P1 Rework", rowTone: "rework-p1" };
+  }
+  return { nextStep: "Not Promising", rowTone: "testing-drop" };
+}
+
 function AnalyticsContent({
   analyticsData,
   analyticsLoading,
@@ -1275,6 +1294,7 @@ function AnalyticsContent({
 }) {
   const [showCompletionBreakdown, setShowCompletionBreakdown] = useState(false);
   const [hideActioned, setHideActioned] = useState(true);
+  const [showPromising, setShowPromising] = useState(false);
   const rows = Array.isArray(analyticsData?.rows) ? analyticsData.rows : [];
   const legendItems =
     Array.isArray(analyticsData?.legend) && analyticsData.legend.length > 0
@@ -1285,7 +1305,17 @@ function AnalyticsContent({
   const hiddenCompletionCount = metricColumns.filter((column) => column.hiddenByDefault).length;
   const actionedCount = rows.filter((row) => Boolean(row?.actioned)).length;
   const visibleRows = useMemo(() => {
-    const safeRows = Array.isArray(rows) ? rows : [];
+    let safeRows = Array.isArray(rows) ? rows : [];
+
+    if (showPromising) {
+      safeRows = safeRows
+        .filter((row) => row?.rowTone === "testing-drop")
+        .map((row) => {
+          const reclassified = classifyPromising(row?.metrics);
+          return { ...row, nextStep: reclassified.nextStep, rowTone: reclassified.rowTone };
+        });
+    }
+
     if (hideActioned) {
       return safeRows.filter((row) => !row?.actioned);
     }
@@ -1300,7 +1330,7 @@ function AnalyticsContent({
       }
     });
     return [...activeRows, ...completedRows];
-  }, [hideActioned, rows]);
+  }, [hideActioned, showPromising, rows]);
   const analyticsSubtitle = buildAnalyticsSubtitle({
     ...analyticsData,
     rowCount: visibleRows.length,
@@ -1330,7 +1360,14 @@ function AnalyticsContent({
             {rows.length > 0 ? (
               <>
                 <div className="analytics-legend-row">
-                  {legendItems.map((item) => (
+                  {(showPromising
+                    ? [
+                        { label: "Potential Gen AI", tone: "gen-ai" },
+                        { label: "Potential P1 Rework", tone: "rework-p1" },
+                        { label: "Not Promising", tone: "testing-drop" },
+                      ]
+                    : legendItems
+                  ).map((item) => (
                     <div key={item.label} className="analytics-legend-chip">
                       <span className={`details-legend-swatch ${getAnalyticsLegendToneClass(item.tone)}`.trim()} />
                       <span>{item.label}</span>
@@ -1339,6 +1376,13 @@ function AnalyticsContent({
                 </div>
 
                 <div className="analytics-controls-row" data-share-ignore="true">
+                  <button
+                    type="button"
+                    className={showPromising ? "primary-button" : "ghost-button"}
+                    onClick={() => setShowPromising((current) => !current)}
+                  >
+                    {showPromising ? "Showing what's promising" : "Show what's promising right now"}
+                  </button>
                   <button
                     type="button"
                     className="ghost-button"
