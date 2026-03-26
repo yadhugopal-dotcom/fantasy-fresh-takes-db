@@ -1,17 +1,18 @@
-import { Outfit, Work_Sans } from "next/font/google";
+import { Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 
-const outfit = Outfit({
+const fraunces = Fraunces({
   subsets: ["latin"],
+  axes: ["opsz"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-outfit",
+  variable: "--font-fraunces",
   display: "swap",
 });
 
-const workSans = Work_Sans({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-work-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -23,7 +24,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} ${workSans.variable}`}>{children}</body>
+      <body className={`${fraunces.variable} ${dmSans.variable}`}>{children}</body>
     </html>
   );
 }
