@@ -186,6 +186,8 @@ function buildNextWeekPayload(plannerState, ideationRows) {
     plannerSource: plannerState.plannerSource || "board",
     plannerBeatCount: plannerState.plannerBeats.length,
     goodToGoBeatsCount: gtgMetrics.goodToGoBeatsCount,
+    reviewPendingCount: gtgMetrics.reviewPendingCount || 0,
+    iterateCount: gtgMetrics.iterateCount || 0,
     goodToGoTarget: gtgMetrics.goodToGoTarget,
     ideationWeekBucket: gtgMetrics.ideationWeekBucket,
     freshTakeCount: plannedReleaseCount,

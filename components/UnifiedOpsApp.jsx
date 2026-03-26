@@ -1102,6 +1102,8 @@ function OverviewNextWeek({ overviewData, overviewLoading, overviewError }) {
   const target = overviewData?.targetFloor || 22;
   const shortfall = Math.max(0, target - Number(plannedLive || 0));
   const beatsCount = overviewData?.plannerBeatCount ?? 0;
+  const reviewPendingCount = overviewData?.reviewPendingCount ?? 0;
+  const iterateCount = overviewData?.iterateCount ?? 0;
 
   // Readiness checklist data
   const liveOnMetaCount = Number(overviewData?.plannedReleaseCount || 0);
@@ -1115,7 +1117,11 @@ function OverviewNextWeek({ overviewData, overviewLoading, overviewError }) {
           label="Beats locked GTG"
           className="hero-card"
           value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-          hint="Confirmed and ready to go"
+          hint={
+            !overviewLoading && (reviewPendingCount > 0 || iterateCount > 0)
+              ? `${reviewPendingCount} review pending · ${iterateCount} in iteration`
+              : "Confirmed and ready to go"
+          }
           tone="positive"
         />
         <MetricCard
@@ -1792,6 +1798,8 @@ export default function UnifiedOpsApp() {
         ...nextApiData,
         ...nextWeekPlannerBoardMetrics.overview,
         goodToGoBeatsCount: nextApiData.goodToGoBeatsCount ?? null,
+        reviewPendingCount: nextApiData.reviewPendingCount ?? 0,
+        iterateCount: nextApiData.iterateCount ?? 0,
         goodToGoTarget: nextApiData.goodToGoTarget ?? 30,
         ideationWeekBucket: nextApiData.ideationWeekBucket || "",
         goodToGoError: nextApiData.goodToGoError || nextOverviewError || "",
