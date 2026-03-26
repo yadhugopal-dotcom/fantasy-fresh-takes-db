@@ -24,10 +24,9 @@ import { copyNodeImageToClipboard } from "../lib/clipboard-share.js";
 
 const SESSION_STORAGE_KEY = "fresh-take-gantt-edit";
 const GRID_TEMPLATE_COLUMNS = "80px 130px 420px repeat(7, 1fr)";
-const BODY_FONT = "var(--font-body), sans-serif";
-const DISPLAY_FONT = "var(--font-display), sans-serif";
-const MONO_FONT =
-  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
+const BODY_FONT = "var(--font-body)";
+const DISPLAY_FONT = "var(--font-display)";
+const MONO_FONT = "var(--font-display)";
 const AUTOSAVE_DELAY_MS = 500;
 const EMPTY_STAGE_SUMMARY = Object.fromEntries(STAGES.map((stage) => [stage.id, 0]));
 
@@ -113,7 +112,7 @@ function StageBar({ stageId, isStart, isEnd }) {
         left: isStart ? 3 : 0,
         right: isEnd ? 3 : 0,
         background: stage.color,
-        borderRadius: `${isStart ? 5 : 0}px ${isEnd ? 5 : 0}px ${isEnd ? 5 : 0}px ${isStart ? 5 : 0}px`,
+        borderRadius: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -147,8 +146,8 @@ function Toast({ toast }) {
 
   const palette =
     toast.tone === "success"
-      ? { background: "#ecfdf5", border: "#6ee7b7", color: "#065f46" }
-      : { background: "#fff1f2", border: "#fda4af", color: "#9f1239" };
+      ? { background: "var(--green-bg)", border: "var(--forest)", color: "var(--forest)" }
+      : { background: "var(--red-bg)", border: "var(--red)", color: "var(--red)" };
 
   return (
     <div
@@ -160,7 +159,7 @@ function Toast({ toast }) {
         minWidth: 260,
         maxWidth: 360,
         padding: "12px 14px",
-        borderRadius: 12,
+        borderRadius: "var(--radius-md)",
         border: `1px solid ${palette.border}`,
         background: palette.background,
         color: palette.color,
@@ -180,10 +179,10 @@ function StatusBanner({ children }) {
       style={{
         marginBottom: 14,
         padding: "12px 14px",
-        borderRadius: 10,
-        background: "#fff1f2",
-        color: "#9f1239",
-        border: "1px solid #fecdd3",
+        borderRadius: "var(--radius-md)",
+        background: "var(--red-bg)",
+        color: "var(--red)",
+        border: "1px solid rgba(159, 46, 46, 0.2)",
         fontSize: 12,
         fontWeight: 600,
       }}
@@ -201,10 +200,10 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
   const ooo = Number(safeSummary.writer_ooo || 0);
 
   const chips = [
-    { value: beats, label: "Beats this week", color: "#1e40af" },
-    { value: production, label: "Expected in Production", color: STAGE_MAP.production?.text || "#065f46" },
-    { value: live, label: "Expected Live", color: STAGE_MAP.live_on_meta?.text || "#155e75" },
-    { value: ooo, label: "Writer OOO", color: STAGE_MAP.writer_ooo?.text || "#92400e" },
+    { value: beats, label: "Beats this week", color: "var(--navy)" },
+    { value: production, label: "Expected in Production", color: STAGE_MAP.production?.text || "var(--forest)" },
+    { value: live, label: "Expected Live", color: STAGE_MAP.live_on_meta?.text || "var(--forest)" },
+    { value: ooo, label: "Writer OOO", color: STAGE_MAP.writer_ooo?.text || "var(--terracotta)" },
   ];
 
   return (
@@ -217,9 +216,9 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
             alignItems: "center",
             gap: 6,
             padding: "8px 12px",
-            background: "#fffefb",
-            borderRadius: 12,
-            border: "1px solid #ddd3c2",
+            background: "var(--card)",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--border)",
             boxShadow: "0 8px 20px rgba(20, 28, 30, 0.05)",
           }}
         >
@@ -233,7 +232,7 @@ function SummaryChips({ summary, notStarted, totalBeats }) {
           >
             {chip.value}
           </span>
-          <span style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>{chip.label}</span>
+          <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{chip.label}</span>
         </div>
       ))}
     </div>
@@ -478,7 +477,7 @@ function BeatDocPicker({
           style={{
             ...textStyle,
             fontWeight: 600,
-            color: canLinkBeat ? "#0b6b67" : textStyle.color,
+            color: canLinkBeat ? "var(--accent)" : textStyle.color,
             textDecoration: canLinkBeat ? "underline" : "none",
             textUnderlineOffset: canLinkBeat ? "2px" : undefined,
             textDecorationThickness: canLinkBeat ? "1px" : undefined,
@@ -521,7 +520,7 @@ function BeatDocPicker({
                   ...textStyle,
                   display: "block",
                   fontWeight: 600,
-                  color: "#0b6b67",
+                  color: "var(--accent)",
                   textDecoration: "underline",
                   textUnderlineOffset: "2px",
                   textDecorationThickness: "1px",
@@ -535,7 +534,7 @@ function BeatDocPicker({
                 style={{
                   ...textStyle,
                   fontWeight: hasBeatSelection ? 600 : 500,
-                  color: hasBeatSelection ? "#0f172a" : "#94a3b8",
+                  color: hasBeatSelection ? "var(--ink)" : "var(--muted)",
                 }}
               >
                 {hasBeatSelection
@@ -559,7 +558,7 @@ function BeatDocPicker({
                 onOpen();
               }
             }}
-            style={{ ...clearFieldBtnStyle, width: 22, height: 22, borderRadius: 7 }}
+            style={{ ...clearFieldBtnStyle, width: 22, height: 22, borderRadius: "var(--radius-sm)" }}
             title={hasBeatSelection ? "Change beat selection" : "Select beat"}
           >
             ▾
@@ -593,9 +592,9 @@ function BeatDocPicker({
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            background: "#fff",
-            border: "1px solid #e2e8f0",
-            borderRadius: 10,
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
             boxShadow: "0 18px 44px rgba(15,23,42,0.16)",
           }}
         >
@@ -610,7 +609,7 @@ function BeatDocPicker({
                   padding: 0,
                   cursor: "pointer",
                   fontSize: 11,
-                  color: "#64748b",
+                  color: "var(--muted)",
                   textAlign: "left",
                   fontFamily: BODY_FONT,
                 }}
@@ -626,12 +625,12 @@ function BeatDocPicker({
                 style={{
                   width: "100%",
                   boxSizing: "border-box",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
                   padding: "8px 10px",
                   fontSize: 11,
                   fontFamily: BODY_FONT,
-                  color: "#0f172a",
+                  color: "var(--ink)",
                   outline: "none",
                 }}
               />
@@ -643,12 +642,12 @@ function BeatDocPicker({
                 style={{
                   width: "100%",
                   boxSizing: "border-box",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
                   padding: "8px 10px",
                   fontSize: 11,
                   fontFamily: BODY_FONT,
-                  color: "#0f172a",
+                  color: "var(--ink)",
                   outline: "none",
                 }}
               />
@@ -669,10 +668,10 @@ function BeatDocPicker({
                 }}
                 style={{
                   padding: "8px 12px",
-                  borderRadius: 8,
+                  borderRadius: "var(--radius-sm)",
                   border: "none",
-                  background: manualBeatTitle.trim() ? "#0f172a" : "#cbd5e1",
-                  color: manualBeatTitle.trim() ? "#fff" : "#94a3b8",
+                  background: manualBeatTitle.trim() ? "var(--ink)" : "var(--border)",
+                  color: manualBeatTitle.trim() ? "var(--card)" : "var(--muted)",
                   fontSize: 11,
                   fontWeight: 600,
                   fontFamily: BODY_FONT,
@@ -685,7 +684,7 @@ function BeatDocPicker({
           ) : (
             <>
               {!message ? (
-                <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--card-alt)" }}>
                   <input
                     autoFocus
                     type="text"
@@ -695,12 +694,12 @@ function BeatDocPicker({
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
                       padding: "8px 10px",
                       fontSize: 11,
                       fontFamily: BODY_FONT,
-                      color: "#0f172a",
+                      color: "var(--ink)",
                       outline: "none",
                     }}
                   />
@@ -729,14 +728,14 @@ function BeatDocPicker({
                         }}
                         style={pickerOptionStyle}
                       >
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#1e293b" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>
                           {option.beatTitle || option.beatName || "Untitled Beat"}
                         </div>
                         <div
                           style={{
                             marginTop: 3,
                             fontSize: 10,
-                            color: "#64748b",
+                            color: "var(--muted)",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -749,7 +748,7 @@ function BeatDocPicker({
                   : null}
               </div>
 
-              <div style={{ padding: "6px 10px", borderTop: "1px solid #f1f5f9" }}>
+              <div style={{ padding: "6px 10px", borderTop: "1px solid var(--card-alt)" }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -759,10 +758,10 @@ function BeatDocPicker({
                   style={{
                     width: "100%",
                     padding: "8px 10px",
-                    borderRadius: 8,
-                    border: "1px dashed #cbd5e1",
-                    background: "#f8fafc",
-                    color: "#475569",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px dashed var(--border)",
+                    background: "var(--card-alt)",
+                    color: "var(--ink-secondary)",
                     fontSize: 11,
                     fontWeight: 600,
                     fontFamily: BODY_FONT,
@@ -816,10 +815,10 @@ function TrackerTable({
   return (
     <div
       style={{
-        background: "#fffefb",
-        border: "1px solid #ddd3c2",
-        borderRadius: 18,
-        boxShadow: "0 18px 40px rgba(20, 28, 30, 0.08)",
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 0,
+        boxShadow: "none",
         overflow: "auto",
       }}
     >
@@ -828,7 +827,7 @@ function TrackerTable({
           display: "grid",
           gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
           minWidth: 940,
-          borderBottom: "1px solid #ede4d7",
+          borderBottom: "1px solid var(--border)",
         }}
       >
         {["Pod", "Writer", "Beats"].map((label) => (
@@ -847,8 +846,8 @@ function TrackerTable({
               justifyContent: "center",
               flexDirection: "column",
               gap: 1,
-              background: index === todayIdx ? "#006a67" : "#fbf5eb",
-              color: index === todayIdx ? "#fff" : "#58636a",
+              background: index === todayIdx ? "var(--teal, #2563EB)" : "var(--surface)",
+              color: index === todayIdx ? "#fff" : "var(--muted)",
             }}
           >
             <span>{DAYS[index]}</span>
@@ -862,12 +861,12 @@ function TrackerTable({
 
       {rows.map((row) => {
         const rowBorder = !row.isLastAssetRow
-          ? "1px dashed #e2e8f0"
+          ? "1px dashed var(--border)"
           : !row.isLastWriterRow
-            ? "1px solid #e2e8f0"
+            ? "1px solid var(--border)"
               : !row.isLastPodRow
-              ? "1.5px solid #cbd5e1"
-              : "2px solid #cbd5e1";
+              ? "1.5px solid var(--border)"
+              : "2px solid var(--border)";
 
         return (
           <div
@@ -877,7 +876,7 @@ function TrackerTable({
               gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
               minWidth: 940,
               minHeight: 34,
-              background: row.assetIndex % 2 === 0 ? "#fffefb" : "#fcf8f0",
+              background: row.assetIndex % 2 === 0 ? "var(--card)" : "var(--surface)",
             }}
           >
             <div
@@ -901,8 +900,8 @@ function TrackerTable({
             <div
               style={{
                 padding: "3px 6px",
-                background: "#f8f2e5",
-                borderRight: "1px solid #ede4d7",
+                background: "var(--surface)",
+                borderRight: "1px solid var(--border)",
                 display: "flex",
                 alignItems: row.isFirstWriterRow ? "flex-start" : "center",
                 borderBottom: rowBorder,
@@ -933,9 +932,9 @@ function TrackerTable({
                         marginTop: 2,
                         padding: "3px 8px",
                         borderRadius: 999,
-                        background: "#fff1f2",
-                        border: "1px solid #fecdd3",
-                        color: "#be123c",
+                        background: "var(--red-bg)",
+                        border: "1px solid rgba(159, 46, 46, 0.2)",
+                        color: "var(--red)",
                         fontSize: 10,
                         fontWeight: 700,
                         lineHeight: 1.2,
@@ -951,7 +950,7 @@ function TrackerTable({
             <div
               style={{
                 padding: "3px 6px",
-                borderRight: "1px solid #ede4d7",
+                borderRight: "1px solid var(--border)",
                 display: "flex",
                 alignItems: "center",
                 borderBottom: rowBorder,
@@ -982,7 +981,7 @@ function TrackerTable({
                 {editable && row.isFirstAssetRow && row.writerBeatCount > 1 ? (
                   <button
                     onClick={() => onRemoveBeat(row.beat.id)}
-                    style={{ ...tinyBtn, color: "#ef4444", borderColor: "#fecaca" }}
+                    style={{ ...tinyBtn, color: "var(--red)", borderColor: "var(--red-bg)" }}
                     title="Remove this beat"
                   >
                     x
@@ -1018,7 +1017,7 @@ function TrackerTable({
                     position: "relative",
                     minHeight: 32,
                     cursor: editable ? "pointer" : "default",
-                    borderRight: dayIndex < DAYS.length - 1 ? "1px solid #f3eadb" : "none",
+                    borderRight: dayIndex < DAYS.length - 1 ? "1px solid var(--border)" : "none",
                     borderBottom: rowBorder,
                     background: isToday ? "rgba(0,106,103,0.05)" : "transparent",
                     borderLeft: isToday ? "2px solid rgba(0,106,103,0.22)" : "none",
@@ -1080,7 +1079,7 @@ function RosterManager({
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--card)",
         borderRadius: 14,
         boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
         padding: 14,
@@ -1092,14 +1091,14 @@ function RosterManager({
           style={{
             fontSize: 10,
             fontWeight: 700,
-            color: "#64748b",
+            color: "var(--muted)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}
         >
           Roster Manager
         </div>
-        <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
+        <div style={{ fontSize: 13, color: "var(--ink)", marginTop: 4 }}>
           Add writers, drag them between pods, set their role, and archive or restore them without changing past week
           snapshots.
         </div>
@@ -1119,10 +1118,10 @@ function RosterManager({
             <div
               key={pod.id}
               style={{
-                border: dropPodId === pod.id ? `2px dashed ${pod.color}` : "1px solid #e2e8f0",
-                borderRadius: 12,
+                border: dropPodId === pod.id ? `2px dashed ${pod.color}` : "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
                 overflow: "hidden",
-                background: "#f8fafc",
+                background: "var(--card-alt)",
               }}
               onDragOver={(event) => {
                 event.preventDefault();
@@ -1195,9 +1194,9 @@ function RosterManager({
                         onChange={(event) => onWriterNameChange(pod.id, writer.id, event.target.value)}
                         style={{
                           ...inputStyle,
-                          background: "#fff",
-                          border: "1px solid #dbe3ee",
-                          borderRadius: 8,
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
                           padding: "8px 10px",
                         }}
                       />
@@ -1206,9 +1205,9 @@ function RosterManager({
                         onChange={(event) => onWriterRoleChange(pod.id, writer.id, event.target.value)}
                         style={{
                           ...inputStyle,
-                          background: "#fff",
-                          border: "1px solid #dbe3ee",
-                          borderRadius: 8,
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
                           padding: "8px 10px",
                         }}
                       >
@@ -1225,9 +1224,9 @@ function RosterManager({
                           width: "auto",
                           height: "auto",
                           padding: "8px 10px",
-                          color: "#991b1b",
-                          borderColor: "#fecaca",
-                          background: "#fff5f5",
+                          color: "var(--red)",
+                          borderColor: "var(--red-bg)",
+                          background: "var(--red-bg)",
                         }}
                       >
                         Archive
@@ -1235,7 +1234,7 @@ function RosterManager({
                     </div>
                   ))
                 ) : (
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
                     {dragWriter ? "Drop a writer here to move them into this POD." : "No active writers in this pod yet."}
                   </div>
                 )}
@@ -1248,11 +1247,11 @@ function RosterManager({
       <div
         style={{
           marginTop: 12,
-          borderTop: "1px solid #e2e8f0",
+          borderTop: "1px solid var(--border)",
           paddingTop: 12,
         }}
       >
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Archived Writers</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>Archived Writers</div>
         {archivedWriters.length > 0 ? (
           <div style={{ display: "grid", gap: 8 }}>
             {archivedWriters.map((writer) => (
@@ -1264,14 +1263,14 @@ function RosterManager({
                   justifyContent: "space-between",
                   gap: 10,
                   padding: "8px 10px",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--card-alt)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>{writer.name}</div>
-                  <div style={{ fontSize: 10, color: "#64748b" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{writer.name}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>
                     Last pod: {writer.podName} · Role: {writer.role || "Writer"}
                   </div>
                 </div>
@@ -1291,7 +1290,7 @@ function RosterManager({
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: "#64748b" }}>No archived writers.</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>No archived writers.</div>
         )}
       </div>
     </div>
@@ -1312,17 +1311,17 @@ function SnapshotBoard({
     <div
       style={{
         width: 1500,
-        background: "#f4efe6",
+        background: "var(--bg)",
         padding: "18px 24px 24px",
         fontFamily: BODY_FONT,
       }}
     >
       <div
         style={{
-          border: "1px solid #d8cfbf",
-          background: "rgba(255, 252, 246, 0.92)",
+          border: "1px solid var(--border)",
+          background: "var(--card)",
           padding: "18px 24px",
-          color: "#1b1c20",
+          color: "var(--ink)",
           borderRadius: 24,
           marginBottom: 14,
           boxShadow: "0 18px 40px rgba(20, 28, 30, 0.08)",
@@ -1335,7 +1334,7 @@ function SnapshotBoard({
                 fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: "0.1em",
-                color: "#084846",
+                color: "var(--forest)",
                 textTransform: "uppercase",
               }}
             >
@@ -1360,7 +1359,7 @@ function SnapshotBoard({
               fontFamily: MONO_FONT,
               minWidth: 150,
               textAlign: "center",
-              color: "#52616c",
+              color: "var(--muted)",
             }}
           >
             {weekLabel}
@@ -2573,13 +2572,13 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
       >
         <div
           style={{
-            border: "1px solid #d8cfbf",
+            border: "1px solid var(--border)",
             borderRadius: 24,
             background: "rgba(255, 252, 246, 0.92)",
             backdropFilter: "blur(8px)",
             boxShadow: "0 18px 40px rgba(20, 28, 30, 0.08)",
             padding: "18px 20px",
-            color: "#1b1c20",
+            color: "var(--ink)",
           }}
         >
           <div
@@ -2597,7 +2596,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                   fontSize: 10,
                   fontWeight: 600,
                   letterSpacing: "0.1em",
-                  color: "#084846",
+                  color: "var(--forest)",
                   textTransform: "uppercase",
                 }}
               >
@@ -2627,7 +2626,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                   fontFamily: MONO_FONT,
                   minWidth: 150,
                   textAlign: "center",
-                  color: "#52616c",
+                  color: "var(--muted)",
                 }}
               >
                 {weekLabel}
@@ -2643,7 +2642,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                     ...navBtn,
                     width: "auto",
                     padding: "6px 14px",
-                    background: "#006a67",
+                    background: "var(--accent)",
                     fontSize: 11,
                     fontWeight: 700,
                   }}
@@ -2659,7 +2658,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                   ...navBtn,
                   width: "auto",
                   padding: "6px 14px",
-                  background: "#006a67",
+                  background: "var(--accent)",
                   fontSize: 11,
                   fontWeight: 700,
                   opacity: isCopyingShare ? 0.7 : 1,
@@ -2679,7 +2678,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                     ...navBtn,
                     width: "auto",
                     padding: "6px 14px",
-                    background: "#114e4b",
+                    background: "var(--forest)",
                     fontSize: 11,
                     fontWeight: 700,
                     opacity: isCommitting ? 0.7 : 1,
@@ -2698,12 +2697,12 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                   ...navBtn,
                   width: "auto",
                   padding: "6px 14px",
-                  background: editUnlocked ? "#006a67" : "#fffaf2",
+                  background: editUnlocked ? "var(--accent)" : "var(--bg)",
                   fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: "0.02em",
-                  color: editUnlocked ? "#fff" : "#1b1c20",
-                  border: "1px solid #cfc5b4",
+                  color: editUnlocked ? "#fff" : "var(--ink)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 {editUnlocked ? "Lock Edit" : "Unlock Edit"}
@@ -2713,11 +2712,11 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 style={{
                   padding: "6px 10px",
                   borderRadius: 999,
-                  background: "#fff",
-                  border: "1px solid #dfd7c8",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
                   fontSize: 11,
                   fontWeight: 600,
-                  color: editUnlocked ? "#14532d" : "#52616c",
+                  color: editUnlocked ? "var(--forest)" : "var(--muted)",
                 }}
               >
                 {sessionChecked ? (editUnlocked ? "Editing enabled" : "Read-only") : "Checking session..."}
@@ -2740,9 +2739,9 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 marginBottom: 14,
                 padding: "12px 14px",
                 borderRadius: 14,
-                background: "#eef4f5",
-                color: "#084846",
-                border: "1px solid #c7d4d1",
+                background: "var(--green-bg)",
+                color: "var(--forest)",
+                border: "1px solid rgba(8, 72, 70, 0.15)",
                 fontSize: 12,
                 fontWeight: 600,
               }}
@@ -2757,9 +2756,9 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 marginBottom: 14,
                 padding: "12px 14px",
                 borderRadius: 14,
-                background: "#eef8f6",
-                color: "#0f5132",
-                border: "1px solid #cce7df",
+                background: "var(--green-bg)",
+                color: "var(--forest)",
+                border: "1px solid rgba(8, 72, 70, 0.15)",
                 fontSize: 12,
                 fontWeight: 600,
               }}
@@ -2775,8 +2774,8 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 alignItems: "center",
                 gap: 6,
                 marginBottom: 14,
-                background: "#fffefb",
-                border: "1px solid #ddd3c2",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: 18,
                 padding: "10px 14px",
                 boxShadow: "0 8px 20px rgba(20, 28, 30, 0.05)",
@@ -2787,7 +2786,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#64748b",
+                  color: "var(--muted)",
                   marginRight: 2,
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
@@ -2808,13 +2807,13 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                     alignItems: "center",
                     gap: 5,
                     padding: "5px 10px",
-                    borderRadius: 7,
+                    borderRadius: "var(--radius-sm)",
                     border:
                       activeBrush === stage.id && !eraseMode
                         ? `2px solid ${stage.color}`
                         : "2px solid transparent",
-                    background: activeBrush === stage.id && !eraseMode ? stage.bg : "#fbf5eb",
-                    color: activeBrush === stage.id && !eraseMode ? stage.text : "#64748b",
+                    background: activeBrush === stage.id && !eraseMode ? stage.bg : "var(--surface)",
+                    color: activeBrush === stage.id && !eraseMode ? stage.text : "var(--muted)",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -2826,16 +2825,16 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 </button>
               ))}
 
-              <div style={{ width: 1, height: 22, background: "#e2e8f0", margin: "0 2px" }} />
+              <div style={{ width: 1, height: 22, background: "var(--border)", margin: "0 2px" }} />
 
               <button
                 onClick={() => setEraseMode((current) => !current)}
                 style={{
                   padding: "5px 10px",
-                  borderRadius: 7,
-                  border: eraseMode ? "2px solid #ef4444" : "2px solid transparent",
-                  background: eraseMode ? "#fee2e2" : "#fbf5eb",
-                  color: eraseMode ? "#991b1b" : "#64748b",
+                  borderRadius: "var(--radius-sm)",
+                  border: eraseMode ? "2px solid var(--red)" : "2px solid transparent",
+                  background: eraseMode ? "var(--red-bg)" : "var(--surface)",
+                  color: eraseMode ? "var(--red)" : "var(--muted)",
                   fontSize: 11,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -2845,7 +2844,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
                 Eraser
               </button>
 
-              <div style={{ marginLeft: "auto", fontSize: 10, color: "#94a3b8" }}>
+              <div style={{ marginLeft: "auto", fontSize: 10, color: "var(--muted)" }}>
                 {isLoading ? "Loading week..." : statusText(saveState)}
               </div>
             </div>
@@ -2885,7 +2884,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
             onPaintEnter={handlePaintEnter}
           />
 
-          <div style={{ textAlign: "center", fontSize: 10, color: "#94a3b8", marginTop: 12, paddingBottom: 16 }}>
+          <div style={{ textAlign: "center", fontSize: 10, color: "var(--muted)", marginTop: 12, paddingBottom: 16 }}>
             {plannerRenderError
               ? "This planner week had missing or legacy fields, so a safe read-only fallback is shown instead of crashing the page."
               : editUnlocked
@@ -2926,12 +2925,12 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
 }
 
 const navBtn = {
-  background: "#fffaf2",
-  border: "1px solid #cfc5b4",
-  color: "#1b1c20",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  color: "var(--ink)",
   width: 34,
   height: 34,
-  borderRadius: 999,
+  borderRadius: "var(--radius-sm)",
   cursor: "pointer",
   fontSize: 15,
   fontWeight: 700,
@@ -2943,14 +2942,15 @@ const navBtn = {
 const hdrCell = {
   padding: "10px 10px",
   fontSize: 10,
-  fontWeight: 700,
-  color: "#58636a",
-  background: "#fbf5eb",
+  fontFamily: BODY_FONT,
+  fontWeight: 600,
+  color: "var(--muted)",
+  background: "var(--card-alt)",
   textTransform: "uppercase",
   letterSpacing: "0.08em",
   display: "flex",
   alignItems: "center",
-  borderRight: "1px solid #ede4d7",
+  borderRight: "1px solid var(--border)",
 };
 
 const inputStyle = {
@@ -2959,7 +2959,7 @@ const inputStyle = {
   background: "transparent",
   fontSize: 11,
   fontFamily: BODY_FONT,
-  color: "#1e293b",
+  color: "var(--ink)",
   outline: "none",
   padding: "2px 0",
 };
@@ -2968,7 +2968,7 @@ const textStyle = {
   width: "100%",
   fontSize: 11,
   fontFamily: BODY_FONT,
-  color: "#1e293b",
+  color: "var(--ink)",
   lineHeight: 1.35,
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -2979,7 +2979,7 @@ const subtleTextStyle = {
   width: "100%",
   fontSize: 10,
   fontFamily: BODY_FONT,
-  color: "#64748b",
+  color: "var(--muted)",
   lineHeight: 1.3,
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -2988,9 +2988,9 @@ const subtleTextStyle = {
 
 const beatFieldButtonStyle = {
   width: "100%",
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  borderRadius: "var(--radius-sm)",
   padding: "5px 8px",
   display: "flex",
   alignItems: "center",
@@ -3000,14 +3000,14 @@ const beatFieldButtonStyle = {
 };
 
 const clearFieldBtnStyle = {
-  background: "#fff",
-  border: "1px solid #e2e8f0",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 6,
   width: 18,
   height: 18,
   fontSize: 10,
   fontWeight: 700,
-  color: "#64748b",
+  color: "var(--muted)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -3018,14 +3018,14 @@ const clearFieldBtnStyle = {
 };
 
 const tinyBtn = {
-  background: "#fff",
-  border: "1px solid #e2e8f0",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 4,
   width: 16,
   height: 16,
   fontSize: 11,
   fontWeight: 700,
-  color: "#64748b",
+  color: "var(--muted)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -3038,7 +3038,7 @@ const tinyBtn = {
 const pickerMessageStyle = {
   padding: "16px 12px",
   fontSize: 11,
-  color: "#64748b",
+  color: "var(--muted)",
   textAlign: "center",
 };
 
@@ -3048,7 +3048,7 @@ const pickerOptionStyle = {
   textAlign: "left",
   padding: "9px 12px",
   border: "none",
-  borderBottom: "1px solid #f8fafc",
+  borderBottom: "1px solid var(--card-alt)",
   background: "transparent",
   cursor: "pointer",
   fontFamily: BODY_FONT,
