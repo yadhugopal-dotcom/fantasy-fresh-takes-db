@@ -1508,6 +1508,28 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   const [previousWeekData, setPreviousWeekData] = useState(() =>
     createDefaultWeekData(createDefaultWriterConfig(), shiftWeekKey(getCurrentWeekKey(), -1))
   );
+  const undoStackRef = useRef([]);
+  const MAX_UNDO = 30;
+
+  function pushUndo() {
+    undoStackRef.current.push({
+      weekData: JSON.parse(JSON.stringify(weekData)),
+      writerConfig: JSON.parse(JSON.stringify(writerConfig)),
+    });
+    if (undoStackRef.current.length > MAX_UNDO) {
+      undoStackRef.current.shift();
+    }
+  }
+
+  function undo() {
+    const snapshot = undoStackRef.current.pop();
+    if (!snapshot) return;
+    setWeekData(snapshot.weekData);
+    setWriterConfig(snapshot.writerConfig);
+  }
+
+  const canUndo = undoStackRef.current.length > 0;
+
   const [activeBrush, setActiveBrush] = useState("beats_ideation");
   const [eraseMode, setEraseMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -2144,6 +2166,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function addWriterToPod(podId) {
+    pushUndo();
     if (!canEditRoster) {
       return;
     }
@@ -2181,6 +2204,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function deleteWriter(podId, writerId) {
+    pushUndo();
     if (!canEditRoster) return;
     setWriterConfig((current) => ({
       ...current,
@@ -2195,6 +2219,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   const POD_COLORS = ["#8b5e3c", "#3b6b8c", "#6b3b6b", "#3b6b4e", "#8c6b3b", "#3b4e6b", "#6b4e3b", "#4e6b6b"];
 
   function addPod() {
+    pushUndo();
     if (!canEditRoster) return;
     const name = window.prompt("Enter POD lead name:");
     if (!name || !name.trim()) return;
@@ -2217,6 +2242,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function deletePod(podId) {
+    pushUndo();
     if (!canEditRoster) return;
     const pod = writerConfig?.pods?.find((p) => p.id === podId);
     if (!pod || !window.confirm(`Delete POD "${pod.cl}" and all its writers?`)) return;
@@ -2227,6 +2253,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function moveWriterToPod(sourcePodId, writerId, targetPodId) {
+    pushUndo();
     if (!canEditRoster || sourcePodId === targetPodId) {
       return;
     }
@@ -2278,6 +2305,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function addBeat(writerId) {
+    pushUndo();
     if (!editUnlocked || plannerInteractionDisabled) return;
 
     setWeekData((current) => {
@@ -2304,6 +2332,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function removeBeat(beatId) {
+    pushUndo();
     if (!editUnlocked || plannerInteractionDisabled) return;
 
     setWeekData((current) => {
@@ -2318,6 +2347,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function updateBeatFromDoc(beatId, option) {
+    pushUndo();
     if (!editUnlocked || plannerInteractionDisabled) {
       return;
     }
@@ -2348,6 +2378,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function clearBeatDoc(beatId) {
+    pushUndo();
     if (!editUnlocked || plannerInteractionDisabled) {
       return;
     }
@@ -2410,6 +2441,7 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
   }
 
   function handlePaintStart(pointerAssetId, beatId, assetId, dayIndex) {
+    pushUndo();
     if (!editUnlocked || isLoading) {
       return;
     }
@@ -2729,6 +2761,26 @@ export default function GanttTracker({ onPlannerSnapshotChange = null }) {
               >
                 {editUnlocked ? "Lock Edit" : "Unlock Edit"}
               </button>
+
+              {editUnlocked ? (
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  style={{
+                    ...navBtn,
+                    width: "auto",
+                    padding: "6px 14px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    opacity: canUndo ? 1 : 0.35,
+                    cursor: canUndo ? "pointer" : "not-allowed",
+                  }}
+                  data-share-ignore="true"
+                  title="Undo last action"
+                >
+                  Undo
+                </button>
+              ) : null}
 
               <div
                 style={{
