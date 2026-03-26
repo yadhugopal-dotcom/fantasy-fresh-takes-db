@@ -3,7 +3,6 @@ import "./globals.css";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
-  axes: ["opsz"],
   variable: "--font-fraunces",
   display: "swap",
 });
@@ -23,7 +22,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${dmSans.variable}`}>{children}</body>
+      <body className={`${fraunces.variable} ${dmSans.variable} ${dmSans.className}`}>{children}</body>
     </html>
   );
 }

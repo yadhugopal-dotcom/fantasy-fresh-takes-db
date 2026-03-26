@@ -1,6 +1,6 @@
 :root {
-  --font-body: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
-  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
+  --font-body: system-ui, sans-serif;
+  --font-display: Georgia, serif;
 
   --bg: #f4f0ea;
   --bg-deep: #f4f0ea;
@@ -70,6 +70,8 @@ body {
 }
 
 body {
+  --font-body: var(--font-dm-sans, "DM Sans"), system-ui, sans-serif;
+  --font-display: var(--font-fraunces, "Fraunces"), Georgia, serif;
   font-family: var(--font-body);
   color: var(--ink);
   background: var(--bg);
