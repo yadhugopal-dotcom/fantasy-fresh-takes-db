@@ -1908,7 +1908,7 @@ export default function UnifiedOpsApp() {
   const [notice, setNotice] = useState(null);
   const [podWiseView, setPodWiseView] = useState("performance");
   const [podTasksData, setPodTasksData] = useState(null);
-  const [podTasksLoading, setPodTasksLoading] = useState(true);
+  const [podTasksLoading, setPodTasksLoading] = useState(false);
 
   const nextWeekKey = useMemo(() => shiftWeekKey(getCurrentWeekKey(), 1), []);
   const nextWeekPlannerBoardMetrics = useMemo(() => {
@@ -2094,9 +2094,17 @@ export default function UnifiedOpsApp() {
   }, []);
 
   useEffect(() => {
+    if (activeView !== "pod-wise" || podWiseView !== "tasks") {
+      return undefined;
+    }
+    if (podTasksData) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     async function loadPodTasks() {
+      setPodTasksLoading(true);
       try {
         const response = await fetch("/api/dashboard/pod-tasks", { cache: "no-store" });
         const payload = await readJson(response);
@@ -2121,7 +2129,7 @@ export default function UnifiedOpsApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeView, podWiseView, podTasksData]);
 
   useEffect(() => {
     if (activeView !== "analytics") {
