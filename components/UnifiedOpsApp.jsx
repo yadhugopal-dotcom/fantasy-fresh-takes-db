@@ -952,46 +952,21 @@ function OverviewCurrentWeek({ overviewData, overviewLoading, overviewError }) {
           label="Unique beats this week"
           className="hero-card"
           tone={getPipelineCardTone(beatsCount, beatsTarget)}
-          body={
-            <>
-              <div className="metric-value">
-                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-                <span className="metric-unit">/ {beatsTarget}</span>
-              </div>
-              <ProgressBar value={Number(beatsCount || 0)} target={beatsTarget} />
-            </>
-          }
-          hint="From Planner"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
+          hint={`Target: ${beatsTarget}+`}
         />
         <MetricCard
           label="Moving to production"
           className="hero-card"
           tone={getPipelineCardTone(productionCount, productionTarget)}
-          body={
-            <>
-              <div className="metric-value">
-                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(productionCount)}
-                <span className="metric-unit">/ {productionTarget}</span>
-              </div>
-              <ProgressBar value={Number(productionCount || 0)} target={productionTarget} />
-            </>
-          }
-          hint="Scripts with Production cell"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(productionCount)}
+          hint={`Target: ${productionTarget}`}
         />
         <MetricCard
           label="Assets going live"
           className="hero-card"
           tone={getPipelineCardTone(liveCount, liveTarget)}
-          body={
-            <>
-              <div className="metric-value">
-                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(liveCount)}
-                <span className="metric-unit">/ {liveTarget}</span>
-              </div>
-              <ProgressBar value={Number(liveCount || 0)} target={liveTarget} />
-            </>
-          }
-          hint="~80% of production target"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(liveCount)}
         />
       </div>
       <div className="metric-grid three-col">
