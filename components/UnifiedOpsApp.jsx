@@ -1624,6 +1624,81 @@ function PodWiseContent({ competitionPodRows, competitionLoading, onShare, copyi
   );
 }
 
+function PodTasksContent({ podTasksData, podTasksLoading }) {
+  if (podTasksLoading) {
+    return <EmptyState text="Loading POD tasks..." />;
+  }
+
+  if (!podTasksData) {
+    return <EmptyState text="POD tasks data is not available right now." />;
+  }
+
+  const { scriptsPendingByPod, beatsPendingByPod, totalScriptsPending, totalBeatsPending } = podTasksData;
+
+  return (
+    <div className="section-stack">
+      {/* Summary row */}
+      <div className="pod-summary-grid">
+        {[
+          { label: "Scripts to review", value: totalScriptsPending },
+          { label: "Beats to review", value: totalBeatsPending },
+        ].map((card) => (
+          <div key={card.label} className="metric-card">
+            <div className="metric-label">{card.label}</div>
+            <div className="metric-value">{card.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Scripts pending approval */}
+      <div className="pod-section-header">
+        <span className="pod-section-title">Scripts pending approval</span>
+        <span className="pod-section-subtitle">Scripts completed by writer, awaiting POD lead review</span>
+      </div>
+      <div className="pod-cards-stack">
+        {scriptsPendingByPod.length === 0 ? (
+          <EmptyState text="No scripts pending approval." />
+        ) : (
+          scriptsPendingByPod.map((pod) => (
+            <div key={pod.podLead} className="pod-rank-card" style={{ borderLeftColor: "#c2703e" }}>
+              <div className="pod-info-col" style={{ flex: 1 }}>
+                <div className="pod-lead-name">{pod.podLead}</div>
+              </div>
+              <div className="pod-rank-col">
+                <div className="pod-rank-number" style={{ color: "#c2703e" }}>{pod.count}</div>
+                <div className="pod-rank-label">SCRIPTS</div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Beats pending approval */}
+      <div className="pod-section-header">
+        <span className="pod-section-title">Beats pending approval</span>
+        <span className="pod-section-subtitle">Beats from current week in review pending or iterate status</span>
+      </div>
+      <div className="pod-cards-stack">
+        {beatsPendingByPod.length === 0 ? (
+          <EmptyState text="No beats pending approval this week." />
+        ) : (
+          beatsPendingByPod.map((pod) => (
+            <div key={pod.podLead} className="pod-rank-card" style={{ borderLeftColor: "#2d5a3d" }}>
+              <div className="pod-info-col" style={{ flex: 1 }}>
+                <div className="pod-lead-name">{pod.podLead}</div>
+              </div>
+              <div className="pod-rank-col">
+                <div className="pod-rank-number" style={{ color: "#2d5a3d" }}>{pod.count}</div>
+                <div className="pod-rank-label">BEATS</div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProductionContent({
   acdMetricsData,
   acdMetricsLoading,
@@ -1826,6 +1901,9 @@ export default function UnifiedOpsApp() {
   const [copyingSection, setCopyingSection] = useState("");
   const [includeNewShowsPod, setIncludeNewShowsPod] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [podWiseView, setPodWiseView] = useState("performance");
+  const [podTasksData, setPodTasksData] = useState(null);
+  const [podTasksLoading, setPodTasksLoading] = useState(false);
 
   const nextWeekKey = useMemo(() => shiftWeekKey(getCurrentWeekKey(), 1), []);
   const nextWeekPlannerBoardMetrics = useMemo(() => {
@@ -2009,6 +2087,41 @@ export default function UnifiedOpsApp() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (activeView !== "pod-wise" || podWiseView !== "tasks") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadPodTasks() {
+      setPodTasksLoading(true);
+      try {
+        const response = await fetch("/api/dashboard/pod-tasks", { cache: "no-store" });
+        const payload = await readJson(response);
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load POD tasks.");
+        }
+        if (!cancelled) {
+          setPodTasksData(payload);
+        }
+      } catch {
+        if (!cancelled) {
+          setPodTasksData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setPodTasksLoading(false);
+        }
+      }
+    }
+
+    void loadPodTasks();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, podWiseView]);
 
   useEffect(() => {
     if (activeView !== "analytics") {
@@ -2359,12 +2472,36 @@ export default function UnifiedOpsApp() {
                   <p className="page-header-sub">Conversion rates and output by POD lead</p>
                 </div>
                 <div className="section-shell">
-                  <PodWiseContent
-                    competitionPodRows={competitionData?.podRows}
-                    competitionLoading={competitionLoading}
-                    onShare={copySection}
-                    copyingSection={copyingSection}
-                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                    <div className="week-toggle-group">
+                      {[
+                        { id: "performance", label: "Performance" },
+                        { id: "tasks", label: "Tasks" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={podWiseView === opt.id ? "is-active" : ""}
+                          onClick={() => setPodWiseView(opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {podWiseView === "performance" ? (
+                    <PodWiseContent
+                      competitionPodRows={competitionData?.podRows}
+                      competitionLoading={competitionLoading}
+                      onShare={copySection}
+                      copyingSection={copyingSection}
+                    />
+                  ) : (
+                    <PodTasksContent
+                      podTasksData={podTasksData}
+                      podTasksLoading={podTasksLoading}
+                    />
+                  )}
                 </div>
               </>
             ) : null}
