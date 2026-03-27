@@ -10,6 +10,7 @@ import { getWeekSelection, shiftYmd } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 function normalizeKey(value) {
   return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
