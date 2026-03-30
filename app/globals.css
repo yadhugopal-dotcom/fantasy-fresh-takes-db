@@ -953,6 +953,18 @@ select {
   white-space: nowrap;
 }
 
+.analytics-filter-active {
+  background: var(--ink-bright);
+  color: #ffffff;
+  border-color: var(--ink-bright);
+}
+
+.analytics-filter-active:hover {
+  background: var(--ink);
+  color: #ffffff;
+  border-color: var(--ink);
+}
+
 /* Analytics row tones */
 
 .analytics-row.tone-gen-ai td {

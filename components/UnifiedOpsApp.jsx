@@ -1262,6 +1262,7 @@ function AnalyticsContent({
 }) {
   const [showCompletionBreakdown, setShowCompletionBreakdown] = useState(false);
   const [hideActioned, setHideActioned] = useState(true);
+  const [showPromisingOnly, setShowPromisingOnly] = useState(false);
   const rows = Array.isArray(analyticsData?.rows) ? analyticsData.rows : [];
   const legendItems =
     Array.isArray(analyticsData?.legend) && analyticsData.legend.length > 0
@@ -1272,22 +1273,26 @@ function AnalyticsContent({
   const hiddenCompletionCount = metricColumns.filter((column) => column.hiddenByDefault).length;
   const actionedCount = rows.filter((row) => Boolean(row?.actioned)).length;
   const visibleRows = useMemo(() => {
-    const safeRows = Array.isArray(rows) ? rows : [];
+    let safeRows = Array.isArray(rows) ? rows : [];
     if (hideActioned) {
-      return safeRows.filter((row) => !row?.actioned);
+      safeRows = safeRows.filter((row) => !row?.actioned);
+    } else {
+      const activeRows = [];
+      const completedRows = [];
+      safeRows.forEach((row) => {
+        if (row?.actioned) {
+          completedRows.push(row);
+        } else {
+          activeRows.push(row);
+        }
+      });
+      safeRows = [...activeRows, ...completedRows];
     }
-
-    const activeRows = [];
-    const completedRows = [];
-    safeRows.forEach((row) => {
-      if (row?.actioned) {
-        completedRows.push(row);
-      } else {
-        activeRows.push(row);
-      }
-    });
-    return [...activeRows, ...completedRows];
-  }, [hideActioned, rows]);
+    if (showPromisingOnly) {
+      safeRows = safeRows.filter((row) => row.rowTone === "gen-ai" || row.rowTone === "rework-p1");
+    }
+    return safeRows;
+  }, [hideActioned, showPromisingOnly, rows]);
   const analyticsSubtitle = buildAnalyticsSubtitle({
     ...analyticsData,
     rowCount: visibleRows.length,
@@ -1300,11 +1305,9 @@ function AnalyticsContent({
       isSharing={copyingSection === `Analytics ${analyticsData?.selectedWeekLabel || "selected week"}`}
       className="analytics-panel"
     >
-      <div className="panel-head">
-        <div>
-          <div className="panel-title">Weekly script test results</div>
-          <div className="panel-statline">{analyticsSubtitle}</div>
-        </div>
+      <div className="funnel-section-head">
+        <div className="panel-subtitle">Weekly script test results</div>
+        <div className="panel-statline">{analyticsSubtitle}</div>
       </div>
 
       <div className="section-stack">
@@ -1326,24 +1329,33 @@ function AnalyticsContent({
                 </div>
 
                 <div className="analytics-controls-row" data-share-ignore="true">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setHideActioned((current) => !current)}
-                  >
-                    {hideActioned
-                      ? `Show actioned items${actionedCount > 0 ? ` (${formatNumber(actionedCount)})` : ""}`
-                      : "Hide actioned items"}
-                  </button>
-                  {hiddenCompletionCount > 0 ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className={`ghost-button${showPromisingOnly ? " analytics-filter-active" : ""}`}
+                      onClick={() => setShowPromisingOnly((current) => !current)}
+                    >
+                      {showPromisingOnly ? "Show all items" : "Show what's promising right now"}
+                    </button>
                     <button
                       type="button"
                       className="ghost-button"
-                      onClick={() => setShowCompletionBreakdown((current) => !current)}
+                      onClick={() => setHideActioned((current) => !current)}
                     >
-                      {showCompletionBreakdown ? "Hide Q2 / Q3 / Q4 completion metrics" : "Show Q2 / Q3 / Q4 completion metrics"}
+                      {hideActioned
+                        ? `Show actioned items${actionedCount > 0 ? ` (${formatNumber(actionedCount)})` : ""}`
+                        : "Hide actioned items"}
                     </button>
-                  ) : null}
+                    {hiddenCompletionCount > 0 ? (
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => setShowCompletionBreakdown((current) => !current)}
+                      >
+                        {showCompletionBreakdown ? "Hide Q2 / Q3 / Q4 completion metrics" : "Show Q2 / Q3 / Q4 completion metrics"}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="table-wrap">
@@ -1420,7 +1432,9 @@ function AnalyticsContent({
                       {visibleRows.length === 0 ? (
                         <tr className="analytics-empty-row">
                           <td colSpan={5 + visibleMetricColumns.length}>
-                            All rows for this week are marked actioned. Use “Show actioned items” to review them.
+                            {showPromisingOnly
+                              ? "No promising items (Gen AI or P1 Rework) in the current view."
+                              : "All rows for this week are marked actioned. Use \"Show actioned items\" to review them."}
                           </td>
                         </tr>
                       ) : null}
