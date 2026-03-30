@@ -371,13 +371,15 @@ function DetailsContent({ acdMetricsData, acdMetricsLoading, acdMetricsError, an
   return (
     <div className="section-stack">
       <div className="panel-grid two-col">
-        <section className="panel-card">
-          <div className="panel-title">Teams currently being tracked</div>
-          <div className="section-subtitle">
-            ACD sync reads from the Live tab only, processes Final image sheet links from column AZ, and reports only
-            rows stored as <code>live_tab_sync</code>.
+        <section className="panel-card details-card-no-accent">
+          <div className="funnel-section-head">
+            <div className="panel-subtitle">Teams currently being tracked</div>
+            <div className="section-description">
+              ACD sync reads from the Live tab only, processes Final image sheet links from column AZ, and reports only
+              rows stored as <code>live_tab_sync</code>.
+            </div>
           </div>
-          <div className="section-stack" style={{ marginTop: 16 }}>
+          <div className="section-stack" style={{ marginTop: 12 }}>
             {acdMetricsLoading ? (
               <div className="details-panel-empty">Loading tracked teams...</div>
             ) : acdMetricsError ? (
@@ -410,9 +412,11 @@ function DetailsContent({ acdMetricsData, acdMetricsLoading, acdMetricsError, an
           </div>
         </section>
 
-        <section className="panel-card">
-          <div className="panel-title">Analytics legend</div>
-          <div className="section-subtitle">Use this to decide which attempts are ready for Full Gen AI, need rework, or should be dropped.</div>
+        <section className="panel-card details-card-no-accent">
+          <div className="funnel-section-head">
+            <div className="panel-subtitle">Analytics legend</div>
+            <div className="section-description">Use this to decide which attempts are ready for Full Gen AI, need rework, or should be dropped.</div>
+          </div>
           <div className="details-legend-list">
             {legendItems.map((item) => (
               <div key={item.label} className="details-legend-item">
@@ -426,11 +430,13 @@ function DetailsContent({ acdMetricsData, acdMetricsLoading, acdMetricsError, an
         </section>
       </div>
 
-      <section className="panel-card">
-        <div className="panel-title">Next step logic</div>
-        <div className="section-subtitle">
-          Amount spent is a hard gate. Assets with less than $100 spend are classified as Testing / Drop.
-          Attempts without a readable CPI are excluded from Analytics entirely.
+      <section className="panel-card details-card-no-accent">
+        <div className="funnel-section-head">
+          <div className="panel-subtitle">Next step logic</div>
+          <div className="section-description">
+            Amount spent is a hard gate. Assets with less than $100 spend are classified as Testing / Drop.
+            Attempts without a readable CPI are excluded from Analytics entirely.
+          </div>
         </div>
         <div className="details-logic-grid">
           <article className="details-logic-card">
@@ -463,7 +469,7 @@ function DetailsContent({ acdMetricsData, acdMetricsLoading, acdMetricsError, an
             </ul>
           </article>
         </div>
-        <div className="details-panel-copy">
+        <div className="details-panel-copy" style={{ marginTop: 14 }}>
           <strong>Actioned</strong> is a shared saved checkbox for each week and asset code. It requires unlocked edit
           access to change, and actioned rows are hidden by default in Analytics until you choose to show them.
         </div>

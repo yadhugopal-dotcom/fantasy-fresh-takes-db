@@ -1291,6 +1291,10 @@ select {
   border-color: rgba(123, 135, 148, 0.2);
 }
 
+.details-card-no-accent {
+  border-left: 1px solid var(--line);
+}
+
 .details-logic-card {
   padding: 16px;
   border: 1px solid var(--line);
