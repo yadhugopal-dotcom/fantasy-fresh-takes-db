@@ -35,8 +35,8 @@ const ACD_VIEW_OPTIONS = [
   { id: "cd", label: "CD" },
 ];
 const EMPTY_ACD_MESSAGE = "No valid ACD output data available yet from Live tab sync.";
-const CHART_TONE_POSITIVE = "#3f7d4f";
-const CHART_TONE_WARNING = "#c28b2c";
+const CHART_TONE_POSITIVE = "#2d5a3d";
+const CHART_TONE_WARNING = "#c4704b";
 const CHART_TONE_DANGER = "#b54c47";
 const WRITER_TARGET_PER_WEEK = 1.5;
 const ANALYTICS_LEGEND_FALLBACK = [
@@ -523,13 +523,15 @@ function WeekToggleGroup({ value, onChange, disabled = false }) {
   );
 }
 
-function Toolbar({ title, subtitle, actions, children }) {
+function Toolbar({ title, kicker, subtitle, description, actions, children }) {
   return (
     <div className="section-shell">
       <div className="section-toolbar">
         <div>
-          <div className="section-kicker">{title}</div>
+          {kicker ? <div className="section-kicker">{kicker}</div> : null}
+          <h2 className="section-title">{title}</h2>
           {subtitle ? <div className="section-subtitle">{subtitle}</div> : null}
+          {description ? <div className="section-description">{description}</div> : null}
         </div>
         {actions ? <div className="section-actions">{actions}</div> : null}
       </div>
@@ -2069,31 +2071,33 @@ export default function UnifiedOpsApp() {
     }
   }
 
+  const viewNavItems = [
+    ["overview", "Editorial Funnel"],
+    ["pod-wise", "POD Wise"],
+    ["planner", "Planner"],
+    ["analytics", "Analytics"],
+    ["production", "Production"],
+  ];
+  const moreNavItems = [
+    ["details", "Details"],
+  ];
+
   return (
     <>
-      <main className="ops-page">
-        <div className="ops-shell">
-          <header className="ops-hero">
-            <div className="hero-copy">
-              <div className="hero-kicker">Pocket FM / Fresh takes dashboard</div>
-              <h1>Fresh takes dashboard</h1>
-              <p>Track weekly releases, POD output, planner progress, script analytics, and ACD production detail from one dashboard.</p>
-            </div>
-          </header>
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <div className="sidebar-brand-name">Fresh Takes</div>
+            <div className="sidebar-brand-sub">Pocket FM</div>
+          </div>
 
-          <nav className="ops-nav" aria-label="Fresh takes dashboard sections">
-            {[
-              ["overview", "Editorial Funnel"],
-              ["pod-wise", "POD Wise"],
-              ["planner", "Planner"],
-              ["analytics", "Analytics"],
-              ["production", "Production"],
-              ["details", "Details"],
-            ].map(([id, label]) => (
+          <nav className="sidebar-section" aria-label="Views">
+            <div className="sidebar-section-label">Views</div>
+            {viewNavItems.map(([id, label]) => (
               <button
                 key={id}
                 type="button"
-                className={activeView === id ? "is-active" : ""}
+                className={`sidebar-link${activeView === id ? " active" : ""}`}
                 onClick={() => setActiveView(id)}
               >
                 {label}
@@ -2101,114 +2105,148 @@ export default function UnifiedOpsApp() {
             ))}
           </nav>
 
-          {activeView === "overview" ? (
-            <Toolbar
-              title="Editorial Funnel"
-              subtitle="Current week, next week, and last week editorial funnel at a glance."
-              actions={
-                <label className="toggle-label" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
-                  <input
-                    type="checkbox"
-                    checked={includeNewShowsPod}
-                    onChange={(e) => setIncludeNewShowsPod(e.target.checked)}
-                  />
-                  Include new shows POD
-                </label>
-              }
-            >
-              <OverviewContent
-                overviewDataByPeriod={effectiveOverviewDataByPeriod}
-                overviewLoadingByPeriod={effectiveOverviewLoadingByPeriod}
-                overviewErrorByPeriod={effectiveOverviewErrorByPeriod}
-                productionDataByPeriod={productionDataByPeriod}
-                productionLoadingByPeriod={productionLoadingByPeriod}
-                productionErrorByPeriod={productionErrorByPeriod}
-                onShare={copySection}
-                copyingSection={copyingSection}
-              />
-            </Toolbar>
-          ) : null}
+          <nav className="sidebar-section" aria-label="More">
+            <div className="sidebar-section-label">More</div>
+            {moreNavItems.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={`sidebar-link${activeView === id ? " active" : ""}`}
+                onClick={() => setActiveView(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-          {activeView === "pod-wise" ? (
-            <Toolbar title="POD Wise" subtitle="Lifetime leaderboard">
-              <PodWiseContent
-                competitionPodRows={competitionData?.podRows}
-                competitionLoading={competitionLoading}
-                onShare={copySection}
-                copyingSection={copyingSection}
-              />
-            </Toolbar>
-          ) : null}
+        <main className="ops-main">
+          <div className="ops-shell">
+            {activeView === "overview" ? (
+              <Toolbar
+                kicker="This week's pipeline"
+                title="Editorial Funnel"
+                description="Scripts moving through review, testing, and production this week."
+                actions={
+                  <label className="toggle-label" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+                    <input
+                      type="checkbox"
+                      checked={includeNewShowsPod}
+                      onChange={(e) => setIncludeNewShowsPod(e.target.checked)}
+                    />
+                    Include new shows POD
+                  </label>
+                }
+              >
+                <OverviewContent
+                  overviewDataByPeriod={effectiveOverviewDataByPeriod}
+                  overviewLoadingByPeriod={effectiveOverviewLoadingByPeriod}
+                  overviewErrorByPeriod={effectiveOverviewErrorByPeriod}
+                  productionDataByPeriod={productionDataByPeriod}
+                  productionLoadingByPeriod={productionLoadingByPeriod}
+                  productionErrorByPeriod={productionErrorByPeriod}
+                  onShare={copySection}
+                  copyingSection={copyingSection}
+                />
+              </Toolbar>
+            ) : null}
 
-          {activeView === "planner" ? (
-            <PlannerErrorBoundary>
-              <GanttTracker onPlannerSnapshotChange={setPlannerBoardSnapshot} />
-            </PlannerErrorBoundary>
-          ) : null}
+            {activeView === "pod-wise" ? (
+              <Toolbar
+                kicker="Team performance"
+                title="POD Wise"
+                description="Conversion rates and output by POD lead."
+              >
+                <PodWiseContent
+                  competitionPodRows={competitionData?.podRows}
+                  competitionLoading={competitionLoading}
+                  onShare={copySection}
+                  copyingSection={copyingSection}
+                />
+              </Toolbar>
+            ) : null}
 
-          {activeView === "analytics" ? (
-            <Toolbar
-              title="Analytics"
-              subtitle={analyticsSubtitle || "Week-on-week script test results from the Live tab."}
-              actions={
-                <label className="toolbar-select">
-                  <span>Week</span>
-                  <select
-                    value={selectedAnalyticsWeekKey}
-                    onChange={(event) => setSelectedAnalyticsWeekKey(event.target.value)}
-                    disabled={analyticsLoading && !analyticsData}
-                  >
-                    {(Array.isArray(analyticsData?.weekOptions) ? analyticsData.weekOptions : []).map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              }
-            >
-              <AnalyticsContent
-                analyticsData={analyticsData}
-                analyticsLoading={analyticsLoading}
-                analyticsError={analyticsError}
-                onShare={copySection}
-                copyingSection={copyingSection}
-                onToggleActioned={updateAnalyticsActioned}
-                actionedBusyKey={analyticsActionedBusyKey}
-              />
-            </Toolbar>
-          ) : null}
+            {activeView === "planner" ? (
+              <PlannerErrorBoundary>
+                <GanttTracker onPlannerSnapshotChange={setPlannerBoardSnapshot} />
+              </PlannerErrorBoundary>
+            ) : null}
 
-          {activeView === "production" ? (
-            <Toolbar title="Production" subtitle={productionSubtitle}>
-              <ProductionContent
-                acdMetricsData={acdMetricsData}
-                acdMetricsLoading={acdMetricsLoading}
-                acdMetricsError={acdMetricsError}
-                acdTimeView={acdTimeView}
-                onTimeViewChange={setAcdTimeView}
-                acdViewType={acdViewType}
-                onViewTypeChange={setAcdViewType}
-                onRunSync={runAcdSync}
-                busyAction={busyAction}
-                onShare={copySection}
-                copyingSection={copyingSection}
-              />
-            </Toolbar>
-          ) : null}
+            {activeView === "analytics" ? (
+              <Toolbar
+                kicker="Script performance"
+                title="Analytics"
+                subtitle={analyticsSubtitle || ""}
+                description="Week-on-week script test results from the Live tab."
+                actions={
+                  <label className="toolbar-select">
+                    <span>Week</span>
+                    <select
+                      value={selectedAnalyticsWeekKey}
+                      onChange={(event) => setSelectedAnalyticsWeekKey(event.target.value)}
+                      disabled={analyticsLoading && !analyticsData}
+                    >
+                      {(Array.isArray(analyticsData?.weekOptions) ? analyticsData.weekOptions : []).map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                }
+              >
+                <AnalyticsContent
+                  analyticsData={analyticsData}
+                  analyticsLoading={analyticsLoading}
+                  analyticsError={analyticsError}
+                  onShare={copySection}
+                  copyingSection={copyingSection}
+                  onToggleActioned={updateAnalyticsActioned}
+                  actionedBusyKey={analyticsActionedBusyKey}
+                />
+              </Toolbar>
+            ) : null}
 
-          {activeView === "details" ? (
-            <Toolbar title="Details" subtitle="Tracked teams, sync scope, and Analytics next-step logic.">
-              <DetailsContent
-                acdMetricsData={acdMetricsData}
-                acdMetricsLoading={acdMetricsLoading}
-                acdMetricsError={acdMetricsError}
-                analyticsData={analyticsData}
-              />
-            </Toolbar>
-          ) : null}
-        </div>
-      </main>
+            {activeView === "production" ? (
+              <Toolbar
+                kicker="Output tracking"
+                title="Production"
+                subtitle={productionSubtitle}
+                description="ACD productivity, image sheet tracking, and sync status."
+              >
+                <ProductionContent
+                  acdMetricsData={acdMetricsData}
+                  acdMetricsLoading={acdMetricsLoading}
+                  acdMetricsError={acdMetricsError}
+                  acdTimeView={acdTimeView}
+                  onTimeViewChange={setAcdTimeView}
+                  acdViewType={acdViewType}
+                  onViewTypeChange={setAcdViewType}
+                  onRunSync={runAcdSync}
+                  busyAction={busyAction}
+                  onShare={copySection}
+                  copyingSection={copyingSection}
+                />
+              </Toolbar>
+            ) : null}
+
+            {activeView === "details" ? (
+              <Toolbar
+                kicker="Configuration"
+                title="Details"
+                description="Tracked teams, sync scope, and Analytics next-step logic."
+              >
+                <DetailsContent
+                  acdMetricsData={acdMetricsData}
+                  acdMetricsLoading={acdMetricsLoading}
+                  acdMetricsError={acdMetricsError}
+                  analyticsData={analyticsData}
+                />
+              </Toolbar>
+            ) : null}
+          </div>
+        </main>
+      </div>
 
       <Notice notice={notice} />
     </>
