@@ -886,6 +886,17 @@ function buildOverviewNotes({ overviewError, overviewData }) {
   return notes.filter(Boolean);
 }
 
+function ReadinessChecklistItem({ label, done }) {
+  return (
+    <div className={`readiness-item ${done ? "readiness-done" : "readiness-pending"}`}>
+      <span className="readiness-label">{label}</span>
+      <span className={`readiness-status ${done ? "readiness-status-done" : "readiness-status-pending"}`}>
+        {done ? "Done" : "Pending"}
+      </span>
+    </div>
+  );
+}
+
 function OverviewWeekSection({
   period,
   overviewData,
@@ -898,12 +909,6 @@ function OverviewWeekSection({
   isSharing,
 }) {
   const notes = buildOverviewNotes({ overviewError, overviewData });
-  const sectionTitle =
-    period === "current"
-      ? "Current week editorial funnel"
-      : period === "next"
-        ? "Plan for next week"
-        : "Output from last week";
   const unavailableMetricValue = overviewError ? "-" : null;
   const tatSummary = overviewData?.tatSummary || {};
   const tatValue =
@@ -914,173 +919,212 @@ function OverviewWeekSection({
       : tatSummary?.eligibleAssetCount > 0 && tatSummary?.averageTatDays !== null
         ? formatTat(tatSummary.averageTatDays)
         : "-";
+  const weekLabel = overviewData?.weekLabel || productionData?.weekLabel || "";
 
-  const cards =
-    period === "current"
-      ? [
-            {
-              label: "Number of beats being worked on",
-            value:
-              overviewLoading || !overviewData
-                ? "..."
-                : unavailableMetricValue || formatMetricValue(overviewData.plannerBeatCount),
-            hint:
-              overviewData?.weekStart && overviewData?.weekEnd
-                ? `Planner / ${formatDateLabel(overviewData.weekStart)} to ${formatDateLabel(overviewData.weekEnd)}`
-                : "Planner",
-            tone: "default",
-          },
-          {
-            label: "Number of assets planned to be live this week",
-            value:
-              overviewLoading || !overviewData
-                ? "..."
-                : unavailableMetricValue || formatMetricValue(overviewData.plannedReleaseCount ?? overviewData.freshTakeCount),
-            hint: (
-              <>
-                <div>Target: 22</div>
-                <div>All planner scripts with any Live on Meta cell this week.</div>
-              </>
-            ),
-            tone: getTargetCardTone(overviewData?.plannedReleaseCount ?? overviewData?.freshTakeCount, overviewData?.targetFloor),
-          },
-          {
-            label: "Number of assets moving to production this week",
-            value:
-              overviewLoading || !overviewData
-                ? "..."
-                : unavailableMetricValue || formatMetricValue(overviewData.inProductionBeatCount),
-            hint: "All planner scripts with any Production cell this week.",
-            tone: "default",
-          },
-          {
-            label: "Expected production TAT",
-            value: tatValue,
-            hint:
-              tatSummary?.averageTatDays !== null
-                ? "Planner Production cells divided by unique beats that entered Production."
-                : overviewData?.tatEmptyMessage || "No planner beats are assigned for the selected week yet.",
-            tone: getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays),
-          },
-          {
-            label: "Average number of scripts pushed to production per writer",
-            value:
-              overviewLoading || !overviewData
-                ? "..."
-                : unavailableMetricValue || (overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined ? String(overviewData.scriptsPerWriter) : "-"),
-            hint:
-              overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined
-                ? "Beats entering Production divided by number of writers."
-                : overviewData?.writingEmptyMessage || "No planner beats are assigned for the selected week yet.",
-            tone: "default",
-          },
-          {
-            label: "Average CL review days",
-            value:
-              overviewLoading || !overviewData
-                ? "..."
-                : unavailableMetricValue || formatTat(overviewData?.averageClReviewDays),
-            hint:
-              overviewData?.averageClReviewDays !== null && overviewData?.averageClReviewDays !== undefined
-                ? "Planner CL review cells divided by unique beats."
-                : overviewData?.clReviewEmptyMessage || "No planner beats are assigned for the selected week yet.",
-            tone: getClReviewDaysTone(overviewData?.averageClReviewDays),
-          },
-        ]
-      : period === "next"
-        ? [
-            {
-              label: "Number of beats locked GTG for next week",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue || formatMetricValue(overviewData.plannerBeatCount),
-              hint:
-                overviewData?.plannerBeatCount !== null && overviewData?.plannerBeatCount !== undefined
-                  ? "Unique beats selected in Planner for next week."
-                  : overviewData?.emptyStateMessage || "No planner beats are assigned for next week yet.",
-              tone: "default",
-            },
-            {
-              label: "Number of assets planned to be live next week",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue || formatMetricValue(overviewData.plannedReleaseCount),
-              hint: (
-                <>
-                  <div>Target: 22</div>
-                  <div>Planner-based release plan for next week.</div>
-                </>
-              ),
-              tone: getTargetCardTone(overviewData?.plannedReleaseCount, overviewData?.targetFloor),
-            },
-            {
-              label: "Expected production TAT",
-              value: tatValue,
-              hint:
-                tatSummary?.averageTatDays !== null
-                  ? "Planner Production cells divided by unique beats that entered Production."
-                  : overviewData?.tatEmptyMessage || "Planner allocations are not sufficient yet.",
-              tone: getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays),
-            },
-            {
-              label: "Average writing days",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue || formatTat(overviewData?.averageWritingDays),
-              hint:
-                overviewData?.averageWritingDays !== null && overviewData?.averageWritingDays !== undefined
-                  ? "Planner Writing cells divided by unique beats."
-                  : overviewData?.writingEmptyMessage || "Planner allocations are not sufficient yet.",
-              tone: getWritingDaysTone(overviewData?.averageWritingDays),
-            },
-            {
-              label: "Average CL review days",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue || formatTat(overviewData?.averageClReviewDays),
-              hint:
-                overviewData?.averageClReviewDays !== null && overviewData?.averageClReviewDays !== undefined
-                  ? "Planner CL review cells divided by unique beats."
-                  : overviewData?.clReviewEmptyMessage || "Planner allocations are not sufficient yet.",
-              tone: getClReviewDaysTone(overviewData?.averageClReviewDays),
-            },
-          ]
-        : [
-            {
-              label: "Number of unique fresh takes released",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue || formatMetricValue(overviewData.freshTakeCount),
-              hint: "Released fresh-take attempts from the Live tab for the selected completed week.",
-              tone: getTargetCardTone(overviewData?.freshTakeCount, overviewData?.targetFloor),
-            },
-            {
-              label: "Production TAT",
-              value: tatValue,
-              hint:
+  if (overviewLoading && !overviewData) {
+    return <EmptyState text="Loading Editorial Funnel..." />;
+  }
+
+  /* ── LAST WEEK ── */
+  if (period === "last") {
+    return (
+      <ShareablePanel
+        shareLabel={`Editorial Funnel ${getWeekViewLabel(period)}`}
+        onShare={onShare}
+        isSharing={isSharing}
+        className="overview-week-panel"
+      >
+        <div className="funnel-section-head">
+          <div className="panel-title">Output from last week</div>
+          <div className="panel-statline">{weekLabel}</div>
+          <div className="section-description">What shipped last week and how it performed.</div>
+        </div>
+
+        <div className="section-stack">
+          {notes.map((note) => (
+            <div key={note} className="warning-note">{note}</div>
+          ))}
+
+          <div className="metric-grid funnel-metric-row-3">
+            <MetricCard
+              label="Fresh takes released"
+              value={unavailableMetricValue || formatMetricValue(overviewData?.freshTakeCount)}
+              hint="Unique attempts from Live tab."
+              tone={getTargetCardTone(overviewData?.freshTakeCount, overviewData?.targetFloor)}
+            />
+            <MetricCard
+              label="Production TAT"
+              value={tatValue}
+              hint={
                 tatSummary?.eligibleAssetCount > 0
-                  ? "Calculated from last-week fresh takes released in Live tab."
-                  : overviewData?.tatEmptyMessage || "No eligible TAT rows were found for this completed week.",
-              tone: getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays),
-            },
-            {
-              label: "Hit rate",
-              value:
-                overviewLoading || !overviewData
-                  ? "..."
-                  : unavailableMetricValue ||
-                    (overviewData.hitRate !== null && overviewData.hitRate !== undefined
-                      ? `${overviewData.hitRate.toFixed(1)}%`
-                      : "-"),
-              hint: `Gen AI + P1 Rework assets out of all analytics-eligible released assets. (${overviewData?.hitRateNumerator ?? 0}/${overviewData?.hitRateDenominator ?? 0})`,
-              tone: "default",
-            },
-          ];
+                  ? "From last week's Live tab."
+                  : overviewData?.tatEmptyMessage || "No eligible TAT rows found."
+              }
+              tone={getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays)}
+            />
+            <MetricCard
+              label="Hit rate"
+              value={
+                unavailableMetricValue ||
+                (overviewData?.hitRate !== null && overviewData?.hitRate !== undefined
+                  ? `${overviewData.hitRate.toFixed(1)}%`
+                  : "-")
+              }
+              hint={`${overviewData?.hitRateNumerator ?? 0} of ${overviewData?.hitRateDenominator ?? 0} analytics-eligible assets.`}
+              tone="default"
+            />
+          </div>
+
+          {Array.isArray(overviewData?.beatsFunnel) && overviewData.beatsFunnel.length > 0 && (
+            <div className="beats-funnel-section">
+              <div className="funnel-section-head" style={{ marginBottom: 12 }}>
+                <div className="panel-subtitle">Beats funnel</div>
+                <div className="panel-statline" style={{ fontSize: "0.82rem" }}>
+                  Beats released and their conversion in the last week.
+                </div>
+              </div>
+              <div className="table-wrap">
+                <table className="beats-funnel-table ops-table">
+                  <colgroup>
+                    <col className="col-show" />
+                    <col className="col-beat" />
+                    <col className="col-attempts" />
+                    <col className="col-success" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Show</th>
+                      <th>Beat</th>
+                      <th className="col-right">Attempts</th>
+                      <th className="col-right">Successful</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const rows = overviewData.beatsFunnel;
+                      const rendered = [];
+                      let i = 0;
+                      while (i < rows.length) {
+                        const showName = rows[i].showName;
+                        let j = i;
+                        while (j < rows.length && rows[j].showName === showName) j++;
+                        const span = j - i;
+                        for (let k = i; k < j; k++) {
+                          const row = rows[k];
+                          const isSuccess = row.successfulAttempts > 0;
+                          rendered.push(
+                            <tr key={`${row.showName}-${row.beatName}`} className={isSuccess ? "beats-funnel-success" : ""}>
+                              {k === i && <td rowSpan={span}>{row.showName}</td>}
+                              <td>{row.beatName}</td>
+                              <td className="col-right">{row.attempts}</td>
+                              <td className="col-right" style={isSuccess ? { color: "var(--forest)", fontWeight: 700 } : { color: "var(--red)" }}>
+                                {row.successfulAttempts}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        i = j;
+                      }
+                      return rendered;
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </ShareablePanel>
+    );
+  }
+
+  /* ── THIS WEEK (current) ── */
+  if (period === "current") {
+    return (
+      <ShareablePanel
+        shareLabel={`Editorial Funnel ${getWeekViewLabel(period)}`}
+        onShare={onShare}
+        isSharing={isSharing}
+        className="overview-week-panel"
+      >
+        <div className="funnel-section-head">
+          <div className="panel-title">Editorial funnel</div>
+          <div className="panel-statline">{weekLabel}</div>
+          <div className="section-description">Where we are this week: planning and production status.</div>
+        </div>
+
+        <div className="section-stack">
+          {notes.map((note) => (
+            <div key={note} className="warning-note">{note}</div>
+          ))}
+
+          <div className="metric-grid funnel-metric-row-2">
+            <MetricCard
+              label="Unique beats this week"
+              value={unavailableMetricValue || formatMetricValue(overviewData?.plannerBeatCount)}
+              hint="Target: 25+"
+              tone={getTargetCardTone(overviewData?.plannerBeatCount, 25)}
+            />
+            <MetricCard
+              label="Moving to production"
+              value={unavailableMetricValue || formatMetricValue(overviewData?.inProductionBeatCount)}
+              hint="Target: 22"
+              tone={getTargetCardTone(overviewData?.inProductionBeatCount, overviewData?.targetFloor)}
+            />
+          </div>
+
+          <div className="metric-grid funnel-metric-row-3">
+            <MetricCard
+              label="Expected production TAT"
+              value={tatValue}
+              hint={
+                tatSummary?.averageTatDays !== null
+                  ? "Production cells / unique beats."
+                  : overviewData?.tatEmptyMessage || "Not enough data yet."
+              }
+              tone={getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays)}
+            />
+            <MetricCard
+              label="Scripts per writer"
+              value={
+                unavailableMetricValue ||
+                (overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined
+                  ? String(overviewData.scriptsPerWriter)
+                  : "-")
+              }
+              hint={
+                overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined
+                  ? "Beats entering production / writers."
+                  : overviewData?.writingEmptyMessage || "Not enough data yet."
+              }
+              tone="default"
+            />
+            <MetricCard
+              label="Avg CL review days"
+              value={unavailableMetricValue || formatTat(overviewData?.averageClReviewDays)}
+              hint={
+                overviewData?.averageClReviewDays !== null && overviewData?.averageClReviewDays !== undefined
+                  ? "CL review cells / unique beats."
+                  : overviewData?.clReviewEmptyMessage || "Not enough data yet."
+              }
+              tone={getClReviewDaysTone(overviewData?.averageClReviewDays)}
+            />
+          </div>
+        </div>
+      </ShareablePanel>
+    );
+  }
+
+  /* ── NEXT WEEK ── */
+  const beatsLockedGtg = Number(overviewData?.goodToGoBeatsCount || 0) + Number(overviewData?.plannerBeatCount || 0);
+  const plannedLive = Number(overviewData?.plannedReleaseCount || 0);
+  const targetFloor = Number(overviewData?.targetFloor || 22);
+  const shortOfTarget = Math.max(0, targetFloor - plannedLive);
+
+  const hasBeatsLocked = beatsLockedGtg > 0;
+  const hasClReview = overviewData?.averageClReviewDays !== null && overviewData?.averageClReviewDays !== undefined;
+  const hasProduction = Number(overviewData?.inProductionBeatCount || 0) > 0;
+  const hasTat = tatSummary?.averageTatDays !== null;
+  const hasShowCoverage = Number(overviewData?.plannerBeatCount || 0) > 0;
 
   return (
     <ShareablePanel
@@ -1089,88 +1133,91 @@ function OverviewWeekSection({
       isSharing={isSharing}
       className="overview-week-panel"
     >
-      <div className="panel-head">
-        <div>
-          <div className="panel-title">{sectionTitle}</div>
-          <div className="panel-statline">{overviewData?.weekLabel || productionData?.weekLabel || ""}</div>
-        </div>
-      </div>
-
       <div className="section-stack">
         {notes.map((note) => (
-          <div key={note} className="warning-note">
-            {note}
-          </div>
+          <div key={note} className="warning-note">{note}</div>
         ))}
 
-        <div className="metric-grid">
-          {cards.map((card) => (
-            <MetricCard
-              key={card.label}
-              label={card.label}
-              value={card.value}
-              hint={card.hint}
-              tone={card.tone}
-              body={card.body}
-              className={card.className}
-            />
-          ))}
+        <div className="funnel-section-head">
+          <div className="panel-title">Plan for next week</div>
+          <div className="panel-statline">{weekLabel}</div>
+          <div className="section-description">Readiness check: are we set up to hit target next week?</div>
         </div>
 
-        {period === "last" && Array.isArray(overviewData?.beatsFunnel) && overviewData.beatsFunnel.length > 0 && (
-          <div className="beats-funnel-section">
-            <div className="panel-subtitle">Beats Funnel</div>
-            <table className="beats-funnel-table">
-              <colgroup>
-                <col className="col-show" />
-                <col className="col-beat" />
-                <col className="col-attempts" />
-                <col className="col-success" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Show</th>
-                  <th>Beat</th>
-                  <th className="col-right">Attempts</th>
-                  <th className="col-right">Successful Attempts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const rows = overviewData.beatsFunnel;
-                  const rendered = [];
-                  let i = 0;
-                  while (i < rows.length) {
-                    const showName = rows[i].showName;
-                    let j = i;
-                    while (j < rows.length && rows[j].showName === showName) j++;
-                    const span = j - i;
-                    for (let k = i; k < j; k++) {
-                      const row = rows[k];
-                      const isSuccess = row.successfulAttempts > 0;
-                      rendered.push(
-                        <tr key={`${row.showName}-${row.beatName}`} className={isSuccess ? "beats-funnel-success" : ""}>
-                          {k === i && <td rowSpan={span}>{row.showName}</td>}
-                          <td>{row.beatName}</td>
-                          <td className="col-right">{row.attempts}</td>
-                          <td className="col-right">{row.successfulAttempts}</td>
-                        </tr>
-                      );
-                    }
-                    i = j;
-                  }
-                  return rendered;
-                })()}
-              </tbody>
-            </table>
+        <div className="metric-grid funnel-metric-row-2">
+          <MetricCard
+            label="Beats locked GTG"
+            value={unavailableMetricValue || formatMetricValue(beatsLockedGtg)}
+            hint="Confirmed and ready to go."
+            tone="default"
+          />
+          <MetricCard
+            label="Assets planned to go live"
+            value={unavailableMetricValue || (
+              <>
+                {formatMetricValue(plannedLive)}
+                <span className="metric-value-suffix"> / {targetFloor}</span>
+              </>
+            )}
+            hint={
+              shortOfTarget > 0
+                ? <span style={{ color: "var(--red)", fontWeight: 700 }}>{shortOfTarget} short of target</span>
+                : "On track."
+            }
+            tone={getTargetCardTone(plannedLive, targetFloor)}
+          />
+        </div>
+
+        <div className="metric-grid funnel-metric-row-3">
+          <MetricCard
+            label="Expected production TAT"
+            value={tatValue}
+            hint={
+              hasTat
+                ? "Production cells / unique beats."
+                : overviewData?.tatEmptyMessage || "Not enough allocations yet."
+            }
+            tone={getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays)}
+          />
+          <MetricCard
+            label="Avg writing days"
+            value={unavailableMetricValue || formatTat(overviewData?.averageWritingDays)}
+            hint={
+              overviewData?.averageWritingDays !== null && overviewData?.averageWritingDays !== undefined
+                ? "Writing cells / unique beats."
+                : overviewData?.writingEmptyMessage || "Not enough allocations yet."
+            }
+            tone={getWritingDaysTone(overviewData?.averageWritingDays)}
+          />
+          <MetricCard
+            label="Avg CL review days"
+            value={unavailableMetricValue || formatTat(overviewData?.averageClReviewDays)}
+            hint={
+              hasClReview
+                ? "CL review cells / unique beats."
+                : overviewData?.clReviewEmptyMessage || "Not enough allocations yet."
+            }
+            tone={getClReviewDaysTone(overviewData?.averageClReviewDays)}
+          />
+        </div>
+
+        <div className="readiness-checklist">
+          <div className="panel-subtitle">Readiness checklist</div>
+          <div className="readiness-list">
+            <ReadinessChecklistItem label="Beats locked and assigned to writers" done={hasBeatsLocked} />
+            <ReadinessChecklistItem label="Scripts in CL review pipeline" done={hasClReview} />
+            <ReadinessChecklistItem label="Scripts cleared for production" done={hasProduction} />
+            <ReadinessChecklistItem label="Production slots booked" done={hasTat} />
+            <ReadinessChecklistItem label="Show coverage (shows with at least 1 beat)" done={hasShowCoverage} />
           </div>
-        )}
+        </div>
       </div>
     </ShareablePanel>
   );
 }
 
 function OverviewContent({
+  period,
   overviewDataByPeriod,
   overviewLoadingByPeriod,
   overviewErrorByPeriod,
@@ -1181,22 +1228,17 @@ function OverviewContent({
   copyingSection,
 }) {
   return (
-    <div className="section-stack">
-      {OVERVIEW_PERIODS.map((period) => (
-        <OverviewWeekSection
-          key={period}
-          period={period}
-          overviewData={overviewDataByPeriod[period]}
-          overviewLoading={Boolean(overviewLoadingByPeriod[period])}
-          overviewError={overviewErrorByPeriod[period] || ""}
-          productionData={productionDataByPeriod[period]}
-          productionLoading={Boolean(productionLoadingByPeriod[period])}
-          productionError={productionErrorByPeriod[period] || ""}
-          onShare={onShare}
-          isSharing={copyingSection === `Editorial Funnel ${getWeekViewLabel(period)}`}
-        />
-      ))}
-    </div>
+    <OverviewWeekSection
+      period={period}
+      overviewData={overviewDataByPeriod[period]}
+      overviewLoading={Boolean(overviewLoadingByPeriod[period])}
+      overviewError={overviewErrorByPeriod[period] || ""}
+      productionData={productionDataByPeriod[period]}
+      productionLoading={Boolean(productionLoadingByPeriod[period])}
+      productionError={productionErrorByPeriod[period] || ""}
+      onShare={onShare}
+      isSharing={copyingSection === `Editorial Funnel ${getWeekViewLabel(period)}`}
+    />
   );
 }
 
@@ -1615,8 +1657,15 @@ async function readJson(response) {
   return response.json();
 }
 
+const OVERVIEW_PERIOD_OPTIONS = [
+  { id: "last", label: "Last week" },
+  { id: "current", label: "This week" },
+  { id: "next", label: "Next week" },
+];
+
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("overview");
+  const [overviewPeriod, setOverviewPeriod] = useState("current");
   const [selectedAnalyticsWeekKey, setSelectedAnalyticsWeekKey] = useState(getWeekSelection("last").weekKey);
   const [plannerBoardSnapshot, setPlannerBoardSnapshot] = useState(null);
   const [overviewDataByPeriod, setOverviewDataByPeriod] = useState({});
@@ -2128,17 +2177,32 @@ export default function UnifiedOpsApp() {
                 title="Editorial Funnel"
                 description="Scripts moving through review, testing, and production this week."
                 actions={
-                  <label className="toggle-label" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
-                    <input
-                      type="checkbox"
-                      checked={includeNewShowsPod}
-                      onChange={(e) => setIncludeNewShowsPod(e.target.checked)}
-                    />
-                    Include new shows POD
-                  </label>
+                  <>
+                    <label className="toggle-label" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={includeNewShowsPod}
+                        onChange={(e) => setIncludeNewShowsPod(e.target.checked)}
+                      />
+                      Include new shows POD
+                    </label>
+                    <div className="week-toggle-group">
+                      {OVERVIEW_PERIOD_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={overviewPeriod === option.id ? "is-active" : ""}
+                          onClick={() => setOverviewPeriod(option.id)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 }
               >
                 <OverviewContent
+                  period={overviewPeriod}
                   overviewDataByPeriod={effectiveOverviewDataByPeriod}
                   overviewLoadingByPeriod={effectiveOverviewLoadingByPeriod}
                   overviewErrorByPeriod={effectiveOverviewErrorByPeriod}

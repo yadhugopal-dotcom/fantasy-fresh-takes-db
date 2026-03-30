@@ -1574,6 +1574,100 @@ select {
   min-width: 100% !important;
 }
 
+/* ─── Editorial Funnel ─── */
+
+.funnel-section-head {
+  margin-bottom: 16px;
+}
+
+.funnel-section-head .panel-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ink-bright);
+}
+
+.funnel-section-head .section-description {
+  margin-top: 4px;
+}
+
+.funnel-metric-row-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.funnel-metric-row-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.metric-value-suffix {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+/* Readiness checklist */
+
+.readiness-checklist {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.readiness-checklist .panel-subtitle {
+  margin-bottom: 12px;
+}
+
+.readiness-list {
+  display: grid;
+  gap: 6px;
+}
+
+.readiness-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.88rem;
+}
+
+.readiness-item:hover {
+  background: var(--bg-surface);
+}
+
+.readiness-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.readiness-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.readiness-status-done {
+  background: rgba(26, 107, 90, 0.10);
+  color: var(--teal);
+}
+
+.readiness-status-pending {
+  background: rgba(194, 65, 65, 0.08);
+  color: var(--red);
+}
+
+@media (max-width: 640px) {
+  .funnel-metric-row-2,
+  .funnel-metric-row-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 860px) {
