@@ -1235,6 +1235,9 @@ function OverviewContent({
   productionDataByPeriod,
   productionLoadingByPeriod,
   productionErrorByPeriod,
+  writerTrackerData,
+  writerTrackerLoading,
+  writerTrackerError,
   onShare,
   copyingSection,
 }) {
@@ -1247,6 +1250,9 @@ function OverviewContent({
       productionData={productionDataByPeriod[period]}
       productionLoading={Boolean(productionLoadingByPeriod[period])}
       productionError={productionErrorByPeriod[period] || ""}
+      writerTrackerData={writerTrackerData}
+      writerTrackerLoading={writerTrackerLoading}
+      writerTrackerError={writerTrackerError}
       onShare={onShare}
       isSharing={copyingSection === `Editorial Funnel ${getWeekViewLabel(period)}`}
     />
@@ -1877,6 +1883,9 @@ const OVERVIEW_PERIOD_OPTIONS = [
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("overview");
   const [overviewPeriod, setOverviewPeriod] = useState("current");
+  const [writerTrackerData, setWriterTrackerData] = useState(null);
+  const [writerTrackerLoading, setWriterTrackerLoading] = useState(false);
+  const [writerTrackerError, setWriterTrackerError] = useState("");
   const [selectedAnalyticsWeekKey, setSelectedAnalyticsWeekKey] = useState(getWeekSelection("last").weekKey);
   const [plannerBoardSnapshot, setPlannerBoardSnapshot] = useState(null);
   const [overviewDataByPeriod, setOverviewDataByPeriod] = useState({});
@@ -2058,6 +2067,45 @@ export default function UnifiedOpsApp() {
       cancelled = true;
     };
   }, [includeNewShowsPod]);
+
+  useEffect(() => {
+    if (activeView !== "overview" || overviewPeriod !== "current") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadWriterTracker() {
+      setWriterTrackerLoading(true);
+      setWriterTrackerError("");
+      try {
+        const response = await fetch(
+          `/api/dashboard/writer-tracker?includeNewShowsPod=${includeNewShowsPod}`,
+          { cache: "no-store" }
+        );
+        const payload = await readJson(response);
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load writer tracker.");
+        }
+        if (!cancelled) {
+          setWriterTrackerData(payload);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setWriterTrackerError(error.message || "Unable to load writer tracker.");
+        }
+      } finally {
+        if (!cancelled) {
+          setWriterTrackerLoading(false);
+        }
+      }
+    }
+
+    void loadWriterTracker();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, overviewPeriod, includeNewShowsPod]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2465,6 +2513,9 @@ export default function UnifiedOpsApp() {
                   productionDataByPeriod={productionDataByPeriod}
                   productionLoadingByPeriod={productionLoadingByPeriod}
                   productionErrorByPeriod={productionErrorByPeriod}
+                  writerTrackerData={writerTrackerData}
+                  writerTrackerLoading={writerTrackerLoading}
+                  writerTrackerError={writerTrackerError}
                   onShare={copySection}
                   copyingSection={copyingSection}
                 />
