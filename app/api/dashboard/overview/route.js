@@ -307,9 +307,10 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
 
   const analyticsEligibleCount = dedupedRows.filter((r) => isAnalyticsEligibleProductionType(r?.productionType)).length;
 
-  // Funnel includes all production types
+  // Funnel only includes analytics-eligible production types
   const funnelMap = new Map();
   for (const row of dedupedRows) {
+    if (!isAnalyticsEligibleProductionType(row?.productionType)) continue;
     const step = classifyHitRateNextStep(row);
     const isSuccess = step === "Gen AI" || step === "P1 Rework";
 
