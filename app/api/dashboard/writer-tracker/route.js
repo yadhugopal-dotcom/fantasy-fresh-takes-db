@@ -3,7 +3,10 @@ import { readJsonObject } from "../../../../lib/storage.js";
 import {
   fetchEditorialTabRows,
   fetchReadyForProductionTabRows,
+  fetchDashboardOverrides,
+  writeDashboardOverride,
 } from "../../../../lib/live-tab.js";
+import { hasEditSession } from "../../../../lib/auth.js";
 import {
   buildPodsModel,
   createDefaultWriterConfig,
@@ -112,10 +115,11 @@ export async function GET(request) {
       isVisiblePlannerPodLeadName(pod?.cl)
     );
 
-    // Load Sheet data in parallel
-    const [{ rows: editorialRows }, rfpResult] = await Promise.all([
+    // Load Sheet data + overrides in parallel
+    const [{ rows: editorialRows }, rfpResult, overrides] = await Promise.all([
       fetchEditorialTabRows(),
       fetchReadyForProductionTabRows().catch(() => ({ rows: [] })),
+      fetchDashboardOverrides(),
     ]);
     const rfpRows = Array.isArray(rfpResult?.rows) ? rfpResult.rows : [];
 
@@ -129,7 +133,7 @@ export async function GET(request) {
       for (const writer of pod.writers || []) {
         if (writer.active === false) continue;
         const beats = (writer.beats || []).filter(
-          (b) => String(b.beatTitle || "").trim() || String(b.showName || "").trim()
+          (b) => String(b.beatTitle || "").trim() || String(b.beatDocUrl || "").trim() || String(b.showName || "").trim()
         );
         if (beats.length === 0) continue;
 
@@ -184,7 +188,10 @@ export async function GET(request) {
       if (!row.writerName) continue;
       if (!includeNewShowsPod && isNonBauPodLeadName(row.podLeadName)) continue;
 
-      const classification = classifyEditorialBeat(row, weekStart, weekEnd, plannerBeatKeys);
+      const adCode = String(row.assetCode || "").trim();
+      const overrideKey = adCode.toLowerCase();
+      const overrideClassification = overrides.get(overrideKey);
+      const classification = overrideClassification || classifyEditorialBeat(row, weekStart, weekEnd, plannerBeatKeys);
       const writerKey = row.writerName.trim().toLowerCase();
 
       if (!writerBeatMap.has(writerKey)) {
@@ -199,11 +206,13 @@ export async function GET(request) {
 
       const entry = writerBeatMap.get(writerKey);
       const beatInfo = {
+        adCode,
         showName: row.showName,
         beatName: row.beatName,
         status: row.status,
         submittedDate: row.submittedDate,
         stage: deriveStage(row, false),
+        overridden: Boolean(overrideClassification),
       };
 
       if (classification === "this_week") entry.thisWeek.push(beatInfo);
@@ -312,6 +321,7 @@ export async function GET(request) {
       weekStart,
       weekEnd,
       dayOfWeek,
+      commitTarget: includeNewShowsPod ? 30 : 20,
       totalAllocated,
       totalThisWeek,
       totalGap: Math.max(0, totalAllocated - totalThisWeek),
@@ -325,6 +335,34 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error.message || "Unable to load writer tracker." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request) {
+  if (!hasEditSession(request)) {
+    return NextResponse.json({ ok: false, error: "Edit session required." }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const adCode = String(body.adCode || "").trim();
+    const classification = String(body.classification || "").trim().toLowerCase();
+
+    if (!adCode) {
+      return NextResponse.json({ ok: false, error: "Missing adCode." }, { status: 400 });
+    }
+
+    if (classification !== "this_week" && classification !== "spillover") {
+      return NextResponse.json({ ok: false, error: "Classification must be this_week or spillover." }, { status: 400 });
+    }
+
+    const result = await writeDashboardOverride(adCode, classification);
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message || "Unable to save override." },
       { status: 500 }
     );
   }

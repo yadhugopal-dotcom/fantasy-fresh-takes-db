@@ -914,6 +914,7 @@ function OverviewWeekSection({
   writerTrackerData,
   writerTrackerLoading,
   writerTrackerError,
+  onOverrideBeat,
   onShare,
   isSharing,
 }) {
@@ -1078,12 +1079,13 @@ function OverviewWeekSection({
       ready_for_production: "Ready for Prod",
     };
 
-    const commitTarget = 20;
+    const commitTarget = writerTrackerData?.commitTarget || 20;
+    const amberFloor = Math.round(commitTarget * 0.75);
     const commitPct = Math.min(100, Math.round((totalAllocated / commitTarget) * 100));
     const isBeforeWednesday = dayOfWeek >= 1 && dayOfWeek <= 2;
     const commitColor = totalAllocated >= commitTarget
       ? "#1a4731"
-      : totalAllocated >= 15 && isBeforeWednesday
+      : totalAllocated >= amberFloor && isBeforeWednesday
         ? "#b8860b"
         : "#c0392b";
 
@@ -1227,15 +1229,33 @@ function OverviewWeekSection({
                                     <>
                                       <div className="tracker-beat-category">Flagged / Ambiguous</div>
                                       {w.ambiguousBeats.map((b, i) => (
-                                        <div key={`am-${i}`} className="tracker-beat-item">
+                                        <div key={`am-${i}`} className="tracker-beat-item tracker-beat-flagged">
                                           <div>
                                             <span className="tracker-beat-name">{b.beatName}</span>
                                             {" "}
                                             <span className="tracker-beat-show">{b.showName}</span>
                                           </div>
-                                          <span className={`tracker-beat-stage stage-${b.stage}`}>
-                                            {STAGE_LABELS[b.stage] || b.stage}
-                                          </span>
+                                          <div className="tracker-override-buttons">
+                                            <button
+                                              type="button"
+                                              className={`tracker-override-btn${b.overridden && b.stage !== "spillover" ? " is-selected" : ""}`}
+                                              onClick={() => b.adCode && onOverrideBeat?.(b.adCode, "this_week")}
+                                              disabled={!b.adCode}
+                                            >
+                                              This week
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`tracker-override-btn tracker-override-btn-muted${b.overridden && b.stage === "spillover" ? " is-selected" : ""}`}
+                                              onClick={() => b.adCode && onOverrideBeat?.(b.adCode, "spillover")}
+                                              disabled={!b.adCode}
+                                            >
+                                              Spillover
+                                            </button>
+                                            <span className={`tracker-beat-stage stage-${b.stage}`}>
+                                              {STAGE_LABELS[b.stage] || b.stage}
+                                            </span>
+                                          </div>
                                         </div>
                                       ))}
                                     </>
@@ -1417,6 +1437,7 @@ function OverviewContent({
   writerTrackerData,
   writerTrackerLoading,
   writerTrackerError,
+  onOverrideBeat,
   onShare,
   copyingSection,
 }) {
@@ -1432,6 +1453,7 @@ function OverviewContent({
       writerTrackerData={writerTrackerData}
       writerTrackerLoading={writerTrackerLoading}
       writerTrackerError={writerTrackerError}
+      onOverrideBeat={onOverrideBeat}
       onShare={onShare}
       isSharing={copyingSection === `Editorial Funnel ${getWeekViewLabel(period)}`}
     />
@@ -2567,6 +2589,32 @@ export default function UnifiedOpsApp() {
     }
   }
 
+  async function overrideBeatClassification(adCode, classification) {
+    const canEdit = await ensureEditAccess().catch((error) => {
+      setNotice({ tone: "error", text: error.message || "Unable to unlock edits." });
+      return false;
+    });
+    if (!canEdit) return;
+
+    try {
+      const response = await fetch("/api/dashboard/writer-tracker", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adCode, classification }),
+      });
+      const payload = await readJson(response);
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || "Unable to save override.");
+      }
+
+      // Refresh writer tracker data
+      setWriterTrackerData(null);
+      setNotice({ tone: "success", text: `Beat ${adCode} reclassified as ${classification === "this_week" ? "This Week" : "Spillover"}.` });
+    } catch (error) {
+      setNotice({ tone: "error", text: error.message || "Unable to save override." });
+    }
+  }
+
   async function runAcdSync() {
     const canRunSync = await ensureEditAccess().catch((error) => {
       setNotice({ tone: "error", text: error.message || "Unable to unlock sync." });
@@ -2695,6 +2743,7 @@ export default function UnifiedOpsApp() {
                   writerTrackerData={writerTrackerData}
                   writerTrackerLoading={writerTrackerLoading}
                   writerTrackerError={writerTrackerError}
+                  onOverrideBeat={overrideBeatClassification}
                   onShare={copySection}
                   copyingSection={copyingSection}
                 />

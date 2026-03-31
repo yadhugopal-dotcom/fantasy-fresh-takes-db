@@ -2137,6 +2137,53 @@ select {
   padding: 4px 0;
 }
 
+/* Override buttons on flagged beats */
+
+.tracker-beat-flagged {
+  border-color: rgba(183, 121, 31, 0.2);
+  background: rgba(183, 121, 31, 0.03);
+}
+
+.tracker-override-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tracker-override-btn {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--subtle);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.tracker-override-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tracker-override-btn.is-selected {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #ffffff;
+}
+
+.tracker-override-btn-muted.is-selected {
+  background: var(--muted);
+  border-color: var(--muted);
+  color: #ffffff;
+}
+
+.tracker-override-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 860px) {
