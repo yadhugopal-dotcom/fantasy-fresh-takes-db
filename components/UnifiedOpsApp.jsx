@@ -911,6 +911,9 @@ function OverviewWeekSection({
   productionData,
   productionLoading,
   productionError,
+  writerTrackerData,
+  writerTrackerLoading,
+  writerTrackerError,
   onShare,
   isSharing,
 }) {
@@ -1050,6 +1053,59 @@ function OverviewWeekSection({
 
   /* ── THIS WEEK (current) ── */
   if (period === "current") {
+    const [expandedWriters, setExpandedWriters] = useState(new Set());
+
+    if (writerTrackerLoading && !writerTrackerData) {
+      return <EmptyState text="Loading Writer Tracker..." />;
+    }
+    if (writerTrackerError) {
+      return <EmptyState text={`Writer Tracker error: ${writerTrackerError}`} />;
+    }
+
+    const trackerRows = writerTrackerData?.trackerRows || [];
+    const stageCounts = writerTrackerData?.stageCounts || {};
+    const dayOfWeek = writerTrackerData?.dayOfWeek ?? new Date().getDay();
+    const totalAllocated = writerTrackerData?.totalAllocated || 0;
+    const totalThisWeek = writerTrackerData?.totalThisWeek || 0;
+    const totalGap = writerTrackerData?.totalGap || 0;
+    const totalSpillovers = writerTrackerData?.totalSpillovers || 0;
+
+    const STAGE_LABELS = {
+      writing: "Writing",
+      pending_review: "Pending Review",
+      reviewed_by_lead: "Reviewed",
+      moving_to_production: "Moving to Prod",
+      ready_for_production: "Ready for Prod",
+    };
+
+    const commitTarget = 17;
+    const commitMax = 20;
+    const commitPct = Math.min(100, Math.round((totalThisWeek / commitMax) * 100));
+    const commitColor = totalThisWeek >= commitTarget ? "#1a4731" : totalThisWeek >= 12 ? "#b8860b" : "#c0392b";
+
+    const gapClass = (gap) => {
+      if (gap === 0) return "gap-zero";
+      if (gap === 1 && dayOfWeek <= 2) return "gap-amber";
+      return "gap-red";
+    };
+
+    const grouped = new Map();
+    for (const row of trackerRows) {
+      if (!grouped.has(row.podLead)) grouped.set(row.podLead, []);
+      grouped.get(row.podLead).push(row);
+    }
+
+    const toggleWriter = (name) => {
+      setExpandedWriters((prev) => {
+        const next = new Set(prev);
+        if (next.has(name)) next.delete(name);
+        else next.add(name);
+        return next;
+      });
+    };
+
+    const stageOrder = ["writing", "pending_review", "reviewed_by_lead", "ready_for_production"];
+
     return (
       <ShareablePanel
         shareLabel={`Editorial Funnel ${getWeekViewLabel(period)}`}
@@ -1058,9 +1114,9 @@ function OverviewWeekSection({
         className="overview-week-panel"
       >
         <div className="funnel-section-head">
-          <div className="panel-title">Editorial funnel</div>
-          <div className="panel-statline">{weekLabel}</div>
-          <div className="section-description">Where we are this week: planning and production status.</div>
+          <div className="panel-title">This week</div>
+          <div className="panel-statline">{writerTrackerData?.weekLabel || weekLabel}</div>
+          <div className="section-description">Writer delivery, stage pipeline, and efficiency.</div>
         </div>
 
         <div className="section-stack">
@@ -1068,22 +1124,156 @@ function OverviewWeekSection({
             <div key={note} className="warning-note">{note}</div>
           ))}
 
-          <div className="metric-grid funnel-metric-row-2">
-            <MetricCard
-              label="Unique beats this week"
-              value={unavailableMetricValue || formatMetricValue(overviewData?.plannerBeatCount)}
-              hint="Target: 25+"
-              tone={getTargetCardTone(overviewData?.plannerBeatCount, 25)}
-            />
-            <MetricCard
-              label="Moving to production"
-              value={unavailableMetricValue || formatMetricValue(overviewData?.inProductionBeatCount)}
-              hint="Target: 22"
-              tone={getTargetCardTone(overviewData?.inProductionBeatCount, overviewData?.targetFloor)}
-            />
+          {/* Section 1 — Planning Health */}
+          <div className="planning-health">
+            <span className="planning-health-label">{totalThisWeek} of {commitTarget}–{commitMax}</span>
+            <div className="planning-health-bar">
+              <div
+                className="planning-health-fill"
+                style={{ width: `${commitPct}%`, background: commitColor }}
+              />
+            </div>
+            <span className="planning-health-target">beats committed</span>
           </div>
 
+          {/* Section 2 — Writer Delivery Tracker */}
+          <div className="tracker-table-wrap">
+            <table className="tracker-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Writer</th>
+                  <th className="col-right">Allocated</th>
+                  <th className="col-right">This Week</th>
+                  <th className="col-right">Gap</th>
+                  <th className="col-right">Spillovers</th>
+                  <th className="col-right">Flagged</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...grouped.entries()].map(([podLead, writers]) => (
+                  <>
+                    <tr key={`pod-${podLead}`} className="tracker-pod-header">
+                      <td colSpan={7}>{podLead}</td>
+                    </tr>
+                    {writers.map((w) => {
+                      const isOpen = expandedWriters.has(w.writerName);
+                      return (
+                        <>
+                          <tr
+                            key={w.writerName}
+                            className="tracker-writer-row"
+                            onClick={() => toggleWriter(w.writerName)}
+                          >
+                            <td>
+                              <span className={`tracker-expand-icon${isOpen ? " is-expanded" : ""}`}>▶</span>
+                            </td>
+                            <td>{w.writerName}</td>
+                            <td className="col-right">{w.allocated}</td>
+                            <td className="col-right">{w.thisWeekCount}</td>
+                            <td className={`col-right ${gapClass(w.gap)}`}>{w.gap}</td>
+                            <td className="col-right">{w.spilloverCount}</td>
+                            <td className="col-right">
+                              {w.ambiguousCount > 0 ? (
+                                <span className="flag-badge">⚠ {w.ambiguousCount}</span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                          {isOpen && (
+                            <tr key={`${w.writerName}-detail`} className="tracker-detail-row">
+                              <td colSpan={7}>
+                                <div className="tracker-beat-detail">
+                                  {w.thisWeekBeats?.length > 0 && (
+                                    <>
+                                      <div className="tracker-beat-category">This Week</div>
+                                      {w.thisWeekBeats.map((b, i) => (
+                                        <div key={`tw-${i}`} className="tracker-beat-item">
+                                          <div>
+                                            <span className="tracker-beat-name">{b.beatName}</span>
+                                            {" "}
+                                            <span className="tracker-beat-show">{b.showName}</span>
+                                          </div>
+                                          <span className={`tracker-beat-stage stage-${b.stage}`}>
+                                            {STAGE_LABELS[b.stage] || b.stage}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </>
+                                  )}
+                                  {w.spilloverBeats?.length > 0 && (
+                                    <>
+                                      <div className="tracker-beat-category">Spillovers</div>
+                                      {w.spilloverBeats.map((b, i) => (
+                                        <div key={`sp-${i}`} className="tracker-beat-item">
+                                          <div>
+                                            <span className="tracker-beat-name">{b.beatName}</span>
+                                            {" "}
+                                            <span className="tracker-beat-show">{b.showName}</span>
+                                          </div>
+                                          <span className={`tracker-beat-stage stage-${b.stage}`}>
+                                            {STAGE_LABELS[b.stage] || b.stage}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </>
+                                  )}
+                                  {w.ambiguousBeats?.length > 0 && (
+                                    <>
+                                      <div className="tracker-beat-category">Flagged / Ambiguous</div>
+                                      {w.ambiguousBeats.map((b, i) => (
+                                        <div key={`am-${i}`} className="tracker-beat-item">
+                                          <div>
+                                            <span className="tracker-beat-name">{b.beatName}</span>
+                                            {" "}
+                                            <span className="tracker-beat-show">{b.showName}</span>
+                                          </div>
+                                          <span className={`tracker-beat-stage stage-${b.stage}`}>
+                                            {STAGE_LABELS[b.stage] || b.stage}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Section 3 — Stage Breakdown */}
+          <div className="stage-pipeline">
+            {stageOrder.map((key) => (
+              <div key={key} className="stage-pipeline-node">
+                <div className="stage-pipeline-count">{stageCounts[key] || 0}</div>
+                <div className="stage-pipeline-label">{STAGE_LABELS[key]}</div>
+              </div>
+            ))}
+          </div>
+          {totalSpillovers > 0 && (
+            <div className="spillover-note">{totalSpillovers} spillover{totalSpillovers !== 1 ? "s" : ""} from previous weeks</div>
+          )}
+
+          {/* Section 4 — Efficiency Stats */}
           <div className="metric-grid funnel-metric-row-3">
+            <MetricCard
+              label="Scripts per writer"
+              value={
+                writerTrackerData?.scriptsPerWriter !== null && writerTrackerData?.scriptsPerWriter !== undefined
+                  ? String(writerTrackerData.scriptsPerWriter)
+                  : unavailableMetricValue || "-"
+              }
+              hint="Beats entering production / writers."
+              tone="default"
+            />
             <MetricCard
               label="Expected production TAT"
               value={tatValue}
@@ -1093,21 +1283,6 @@ function OverviewWeekSection({
                   : overviewData?.tatEmptyMessage || "Not enough data yet."
               }
               tone={getTatCardTone(tatSummary?.averageTatDays, tatSummary?.targetTatDays)}
-            />
-            <MetricCard
-              label="Scripts per writer"
-              value={
-                unavailableMetricValue ||
-                (overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined
-                  ? String(overviewData.scriptsPerWriter)
-                  : "-")
-              }
-              hint={
-                overviewData?.scriptsPerWriter !== null && overviewData?.scriptsPerWriter !== undefined
-                  ? "Beats entering production / writers."
-                  : overviewData?.writingEmptyMessage || "Not enough data yet."
-              }
-              tone="default"
             />
             <MetricCard
               label="Avg CL review days"

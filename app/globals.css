@@ -1911,6 +1911,232 @@ select {
   }
 }
 
+/* ─── Writer Delivery Tracker ─── */
+
+.planning-health {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.planning-health-label {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--forest);
+  white-space: nowrap;
+}
+
+.planning-health-bar {
+  flex: 1;
+  height: 10px;
+  background: rgba(180, 165, 145, 0.15);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.planning-health-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 400ms ease;
+}
+
+.planning-health-target {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tracker-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.tracker-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tracker-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.tracker-table th.col-right,
+.tracker-table td.col-right {
+  text-align: right;
+}
+
+.tracker-table td {
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tracker-pod-header td {
+  background: var(--bg-surface);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--ink-bright);
+  padding: 8px 14px;
+}
+
+.tracker-writer-row {
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.tracker-writer-row:hover {
+  background: rgba(196, 112, 75, 0.03);
+}
+
+.tracker-expand-icon {
+  display: inline-block;
+  width: 16px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.tracker-expand-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.tracker-detail-row td {
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tracker-beat-detail {
+  padding: 10px 14px 10px 44px;
+  display: grid;
+  gap: 6px;
+  background: var(--bg-surface);
+}
+
+.tracker-beat-category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.tracker-beat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 0.84rem;
+}
+
+.tracker-beat-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tracker-beat-show {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.tracker-beat-stage {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.stage-writing { background: rgba(59, 130, 246, 0.1); color: #1e40af; }
+.stage-pending_review { background: rgba(245, 158, 11, 0.1); color: #92400e; }
+.stage-reviewed_by_lead { background: rgba(16, 185, 129, 0.1); color: #065f46; }
+.stage-moving_to_production { background: rgba(139, 92, 246, 0.1); color: #5b21b6; }
+.stage-ready_for_production { background: rgba(37, 99, 235, 0.1); color: #1e3a8a; }
+
+.gap-zero { color: var(--forest); font-weight: 700; }
+.gap-amber { color: var(--gold); font-weight: 700; }
+.gap-red { color: var(--red); font-weight: 700; }
+
+.flag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* Stage Pipeline */
+
+.stage-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 16px 0;
+}
+
+.stage-pipeline-node {
+  flex: 1;
+  text-align: center;
+  padding: 14px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  position: relative;
+}
+
+.stage-pipeline-node:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.stage-pipeline-node:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.stage-pipeline-node + .stage-pipeline-node {
+  border-left: none;
+}
+
+.stage-pipeline-count {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 300;
+  color: var(--forest);
+}
+
+.stage-pipeline-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.spillover-note {
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 860px) {
