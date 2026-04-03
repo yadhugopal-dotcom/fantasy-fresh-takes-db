@@ -47,9 +47,9 @@ const ANALYTICS_LEGEND_FALLBACK = [
   { label: "Metric not meeting", tone: "metric-miss" },
 ];
 const EDITORIAL_FUNNEL_VIEW_OPTIONS = [
+  { id: "overview", label: "Overview" },
   { id: "last", label: "Last week" },
   { id: "current", label: "This week" },
-  { id: "overview", label: "Overview" },
   { id: "next", label: "Next week" },
 ];
 const THEME_STORAGE_KEY = "fresh-takes-theme-mode";
