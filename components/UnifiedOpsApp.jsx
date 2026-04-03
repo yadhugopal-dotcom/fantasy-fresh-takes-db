@@ -52,6 +52,7 @@ const EDITORIAL_FUNNEL_VIEW_OPTIONS = [
   { id: "overview", label: "Overview" },
   { id: "next", label: "Next week" },
 ];
+const THEME_STORAGE_KEY = "fresh-takes-theme-mode";
 
 function formatDateLabel(value) {
   if (!value) return "-";
@@ -2148,6 +2149,7 @@ const OVERVIEW_PERIOD_OPTIONS = EDITORIAL_FUNNEL_VIEW_OPTIONS;
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("overview");
   const [overviewPeriod, setOverviewPeriod] = useState("current");
+  const [themeMode, setThemeMode] = useState("light");
   const [selectedBeatOverviewWeekKey, setSelectedBeatOverviewWeekKey] = useState(getWeekSelection("last").weekKey);
   const [expandedNavGroup, setExpandedNavGroup] = useState("overview");
   const [writerTrackerData, setWriterTrackerData] = useState(null);
@@ -2254,6 +2256,27 @@ export default function UnifiedOpsApp() {
     [acdMetricsData, acdTimeView, acdViewType]
   );
   const analyticsSubtitle = useMemo(() => buildAnalyticsSubtitle(analyticsData), [analyticsData]);
+
+  useEffect(() => {
+    const savedValue = typeof window !== "undefined" ? window.localStorage.getItem(THEME_STORAGE_KEY) : "";
+    if (savedValue === "light" || savedValue === "dark") {
+      setThemeMode(savedValue);
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+      setThemeMode("dark");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", themeMode);
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    }
+  }, [themeMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2806,6 +2829,15 @@ export default function UnifiedOpsApp() {
 
   return (
     <>
+      <button
+        type="button"
+        className="theme-toggle-button"
+        onClick={() => setThemeMode((current) => (current === "light" ? "dark" : "light"))}
+        aria-label={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+        title={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+      >
+        {themeMode === "light" ? "Dark mode" : "Light mode"}
+      </button>
       <div className="app-shell">
         <aside className="sidebar">
           <div className="sidebar-brand">

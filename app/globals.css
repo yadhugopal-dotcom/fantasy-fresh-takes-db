@@ -30,6 +30,34 @@
   --chart-warning: #c4704b;
 }
 
+:root[data-theme="dark"] {
+  --bg-deep: #171411;
+  --bg-surface: #221d19;
+  --panel: #2a2420;
+  --panel-hover: #322b26;
+  --line: rgba(221, 207, 188, 0.2);
+  --line-hover: rgba(221, 207, 188, 0.35);
+  --ink: #f3e9dc;
+  --ink-bright: #fff7ef;
+  --subtle: #cdbfac;
+  --muted: #b6a792;
+  --accent: #da8a5f;
+  --accent-glow: rgba(218, 138, 95, 0.2);
+  --accent-soft: rgba(218, 138, 95, 0.12);
+  --teal: #54b59a;
+  --teal-glow: rgba(84, 181, 154, 0.2);
+  --teal-soft: rgba(84, 181, 154, 0.12);
+  --teal-dark: #6bc3ac;
+  --forest: #8fdbb1;
+  --gold: #e1ab57;
+  --gold-glow: rgba(225, 171, 87, 0.2);
+  --red: #e06f69;
+  --red-glow: rgba(224, 111, 105, 0.2);
+  --amber-text: #e9bf78;
+  --chart-positive: #4aaf8f;
+  --chart-warning: #e09b70;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -57,6 +85,30 @@ button,
 input,
 select {
   font: inherit;
+}
+
+.theme-toggle-button {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 1400;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.theme-toggle-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-hover);
+  background: var(--panel-hover);
 }
 
 /* ─── App shell with sidebar ─── */
@@ -2243,6 +2295,13 @@ select {
 }
 
 @media (max-width: 820px) {
+  .theme-toggle-button {
+    top: 10px;
+    right: 12px;
+    padding: 7px 12px;
+    font-size: 0.76rem;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
   }
