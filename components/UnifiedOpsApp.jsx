@@ -46,6 +46,12 @@ const ANALYTICS_LEGEND_FALLBACK = [
   { label: "Testing / Drop", tone: "testing-drop" },
   { label: "Metric not meeting", tone: "metric-miss" },
 ];
+const EDITORIAL_FUNNEL_VIEW_OPTIONS = [
+  { id: "last", label: "Last week" },
+  { id: "current", label: "This week" },
+  { id: "overview", label: "Overview" },
+  { id: "next", label: "Next week" },
+];
 
 function formatDateLabel(value) {
   if (!value) return "-";
@@ -1440,7 +1446,68 @@ function OverviewContent({
   onOverrideBeat,
   onShare,
   copyingSection,
+  beatOverviewData,
+  beatOverviewLoading,
+  beatOverviewError,
 }) {
+  if (period === "overview") {
+    return (
+      <ShareablePanel
+        shareLabel={`Editorial Funnel Overview ${beatOverviewData?.selectedWeekRangeLabel || ""}`.trim()}
+        onShare={onShare}
+        isSharing={copyingSection === `Editorial Funnel Overview ${beatOverviewData?.selectedWeekRangeLabel || ""}`.trim()}
+        className="overview-week-panel"
+      >
+        <div className="funnel-section-head">
+          <div className="panel-title">End-to-end beat overview</div>
+          <div className="panel-statline">
+            {[beatOverviewData?.selectedWeekLabel, beatOverviewData?.rowCount ? `${formatNumber(beatOverviewData.rowCount)} beats` : ""]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+          <div className="section-description">Beat, contributors, scripting days, production days, and pass/fail outcome.</div>
+        </div>
+
+        <div className="section-stack">
+          {beatOverviewError ? <div className="warning-note">{beatOverviewError}</div> : null}
+
+          {beatOverviewLoading && !beatOverviewData ? (
+            <EmptyState text="Loading end-to-end beat overview..." />
+          ) : Array.isArray(beatOverviewData?.rows) && beatOverviewData.rows.length > 0 ? (
+            <div className="table-wrap">
+              <table className="ops-table">
+                <thead>
+                  <tr>
+                    <th>Beat</th>
+                    <th>Who worked on it</th>
+                    <th className="col-right">Scripting days</th>
+                    <th className="col-right">Production days</th>
+                    <th className="col-right">Pass / Fail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {beatOverviewData.rows.map((row) => (
+                    <tr key={row.beatLabel}>
+                      <td>{row.beatLabel}</td>
+                      <td>{row.contributors || "-"}</td>
+                      <td className="col-right">{row.scriptingDays === null ? "-" : formatMetricValue(row.scriptingDays)}</td>
+                      <td className="col-right">{row.productionDays === null ? "-" : formatMetricValue(row.productionDays)}</td>
+                      <td className="col-right" style={{ fontWeight: 700, color: row.outcome === "Pass" ? "var(--forest)" : "var(--red)" }}>
+                        {row.outcome}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState text={beatOverviewData?.emptyStateMessage || "No beat overview rows are available for this week."} />
+          )}
+        </div>
+      </ShareablePanel>
+    );
+  }
+
   return (
     <OverviewWeekSection
       period={period}
@@ -2076,15 +2143,12 @@ async function readJson(response) {
   return payload && typeof payload === "object" ? payload : {};
 }
 
-const OVERVIEW_PERIOD_OPTIONS = [
-  { id: "last", label: "Last week" },
-  { id: "current", label: "This week" },
-  { id: "next", label: "Next week" },
-];
+const OVERVIEW_PERIOD_OPTIONS = EDITORIAL_FUNNEL_VIEW_OPTIONS;
 
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("overview");
   const [overviewPeriod, setOverviewPeriod] = useState("current");
+  const [selectedBeatOverviewWeekKey, setSelectedBeatOverviewWeekKey] = useState(getWeekSelection("last").weekKey);
   const [expandedNavGroup, setExpandedNavGroup] = useState("overview");
   const [writerTrackerData, setWriterTrackerData] = useState(null);
   const [writerTrackerLoading, setWriterTrackerLoading] = useState(false);
@@ -2107,6 +2171,9 @@ export default function UnifiedOpsApp() {
   const [podTasksData, setPodTasksData] = useState(null);
   const [podTasksLoading, setPodTasksLoading] = useState(false);
   const [podTasksError, setPodTasksError] = useState("");
+  const [beatOverviewData, setBeatOverviewData] = useState(null);
+  const [beatOverviewLoading, setBeatOverviewLoading] = useState(false);
+  const [beatOverviewError, setBeatOverviewError] = useState("");
   const [analyticsData, setAnalyticsData] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState("");
@@ -2381,6 +2448,51 @@ export default function UnifiedOpsApp() {
       cancelled = true;
     };
   }, [activeView, podWiseView, podTasksData]);
+
+  useEffect(() => {
+    if (activeView !== "overview" || overviewPeriod !== "overview") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadBeatOverview() {
+      setBeatOverviewLoading(true);
+      setBeatOverviewError("");
+
+      try {
+        const response = await fetch(
+          `/api/dashboard/beat-overview?week=${encodeURIComponent(selectedBeatOverviewWeekKey)}`,
+          { cache: "no-store" }
+        );
+        const payload = await readJson(response);
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load end-to-end beat overview.");
+        }
+
+        if (!cancelled) {
+          setBeatOverviewData(payload);
+          if (payload?.selectedWeekKey && payload.selectedWeekKey !== selectedBeatOverviewWeekKey) {
+            setSelectedBeatOverviewWeekKey(payload.selectedWeekKey);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBeatOverviewData(null);
+          setBeatOverviewError(error.message || "Unable to load end-to-end beat overview.");
+        }
+      } finally {
+        if (!cancelled) {
+          setBeatOverviewLoading(false);
+        }
+      }
+    }
+
+    void loadBeatOverview();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, overviewPeriod, selectedBeatOverviewWeekKey]);
 
   useEffect(() => {
     if (activeView !== "analytics") {
@@ -2827,6 +2939,22 @@ export default function UnifiedOpsApp() {
                         </button>
                       ))}
                     </div>
+                    {overviewPeriod === "overview" ? (
+                      <label className="toolbar-select">
+                        <span>Week</span>
+                        <select
+                          value={selectedBeatOverviewWeekKey}
+                          onChange={(event) => setSelectedBeatOverviewWeekKey(event.target.value)}
+                          disabled={beatOverviewLoading && !beatOverviewData}
+                        >
+                          {(Array.isArray(beatOverviewData?.weekOptions) ? beatOverviewData.weekOptions : []).map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                   </>
                 }
               >
@@ -2844,6 +2972,9 @@ export default function UnifiedOpsApp() {
                   onOverrideBeat={overrideBeatClassification}
                   onShare={copySection}
                   copyingSection={copyingSection}
+                  beatOverviewData={beatOverviewData}
+                  beatOverviewLoading={beatOverviewLoading}
+                  beatOverviewError={beatOverviewError}
                 />
               </Toolbar>
             ) : null}
