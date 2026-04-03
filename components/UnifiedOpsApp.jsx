@@ -2084,10 +2084,7 @@ const OVERVIEW_PERIOD_OPTIONS = [
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("overview");
   const [overviewPeriod, setOverviewPeriod] = useState("current");
-  const [expandedNavGroups, setExpandedNavGroups] = useState({
-    overview: true,
-    podWise: false,
-  });
+  const [expandedNavGroup, setExpandedNavGroup] = useState("overview");
   const [writerTrackerData, setWriterTrackerData] = useState(null);
   const [writerTrackerLoading, setWriterTrackerLoading] = useState(false);
   const [writerTrackerError, setWriterTrackerError] = useState("");
@@ -2655,23 +2652,34 @@ export default function UnifiedOpsApp() {
     }
   }
 
+  useEffect(() => {
+    if (activeView === "overview") {
+      setExpandedNavGroup("overview");
+      return;
+    }
+
+    if (activeView === "pod-wise") {
+      setExpandedNavGroup("podWise");
+      return;
+    }
+
+    setExpandedNavGroup(null);
+  }, [activeView]);
+
   function toggleNavGroup(groupKey) {
-    setExpandedNavGroups((current) => ({
-      ...current,
-      [groupKey]: !current[groupKey],
-    }));
+    setExpandedNavGroup((current) => (current === groupKey ? null : groupKey));
   }
 
   function openOverviewPeriod(period) {
     setActiveView("overview");
     setOverviewPeriod(period);
-    setExpandedNavGroups((current) => ({ ...current, overview: true }));
+    setExpandedNavGroup("overview");
   }
 
   function openPodWiseSubView(view) {
     setActiveView("pod-wise");
     setPodWiseView(view);
-    setExpandedNavGroups((current) => ({ ...current, podWise: true }));
+    setExpandedNavGroup("podWise");
   }
 
   const viewNavItems = [
@@ -2702,12 +2710,12 @@ export default function UnifiedOpsApp() {
                   setActiveView("overview");
                   toggleNavGroup("overview");
                 }}
-                aria-expanded={expandedNavGroups.overview}
+                aria-expanded={expandedNavGroup === "overview"}
               >
                 <span>Editorial Funnel</span>
-                <span className={`sidebar-group-chevron${expandedNavGroups.overview ? " is-open" : ""}`}>▾</span>
+                <span className={`sidebar-group-chevron${expandedNavGroup === "overview" ? " is-open" : ""}`}>▾</span>
               </button>
-              {expandedNavGroups.overview ? (
+              {expandedNavGroup === "overview" ? (
                 <div className="sidebar-subnav">
                   {OVERVIEW_PERIOD_OPTIONS.map((option) => (
                     <button
@@ -2732,12 +2740,12 @@ export default function UnifiedOpsApp() {
                   setActiveView("pod-wise");
                   toggleNavGroup("podWise");
                 }}
-                aria-expanded={expandedNavGroups.podWise}
+                aria-expanded={expandedNavGroup === "podWise"}
               >
                 <span>POD Wise</span>
-                <span className={`sidebar-group-chevron${expandedNavGroups.podWise ? " is-open" : ""}`}>▾</span>
+                <span className={`sidebar-group-chevron${expandedNavGroup === "podWise" ? " is-open" : ""}`}>▾</span>
               </button>
-              {expandedNavGroups.podWise ? (
+              {expandedNavGroup === "podWise" ? (
                 <div className="sidebar-subnav">
                   <button
                     type="button"
@@ -2761,7 +2769,10 @@ export default function UnifiedOpsApp() {
                 key={id}
                 type="button"
                 className={`sidebar-link${activeView === id ? " active" : ""}`}
-                onClick={() => setActiveView(id)}
+                onClick={() => {
+                  setActiveView(id);
+                  setExpandedNavGroup(null);
+                }}
               >
                 {label}
               </button>
@@ -2775,7 +2786,10 @@ export default function UnifiedOpsApp() {
                 key={id}
                 type="button"
                 className={`sidebar-link${activeView === id ? " active" : ""}`}
-                onClick={() => setActiveView(id)}
+                onClick={() => {
+                  setActiveView(id);
+                  setExpandedNavGroup(null);
+                }}
               >
                 {label}
               </button>
