@@ -52,6 +52,11 @@ const EDITORIAL_FUNNEL_VIEW_OPTIONS = [
   { id: "current", label: "This week" },
   { id: "next", label: "Next week" },
 ];
+const POD_WISE_WEEK_OPTIONS = [
+  { id: "last", label: "Last week" },
+  { id: "current", label: "This week" },
+  { id: "next", label: "Next week" },
+];
 const THEME_STORAGE_KEY = "fresh-takes-theme-mode";
 
 function formatDateLabel(value) {
@@ -1855,6 +1860,7 @@ function PodWiseTasksView({ podTasksData, podTasksLoading, podTasksError, onShar
   }
 
   const pods = Array.isArray(podTasksData?.pods) ? podTasksData.pods : [];
+  const selectedWeekLabel = String(podTasksData?.weekLabel || "").trim();
   const totalScriptsToReview = pods.reduce((sum, pod) => sum + Number(pod.scriptsToReview || 0), 0);
   const totalBeatsToReview = pods.reduce((sum, pod) => sum + Number(pod.pendingBeats || 0), 0);
   const maxScripts = Math.max(...pods.map((p) => Number(p.scriptsToReview || 0)), 1);
@@ -1869,6 +1875,9 @@ function PodWiseTasksView({ podTasksData, podTasksLoading, podTasksError, onShar
         onShare={onShare}
         isSharing={copyingSection === "POD Wise tasks"}
       >
+        {selectedWeekLabel ? (
+          <div className="panel-statline">Week: {selectedWeekLabel}</div>
+        ) : null}
         <div className="metric-grid funnel-metric-row-2">
           <article className="metric-card tone-default">
             <div className="metric-label">Scripts to review</div>
@@ -1908,7 +1917,9 @@ function PodWiseTasksView({ podTasksData, podTasksLoading, podTasksError, onShar
         <div className="pod-tasks-section">
           <div className="panel-head">
             <div className="panel-subtitle">Beats pending approval</div>
-            <div className="pod-performance-hint">Beats from current week in review pending or iterate status</div>
+            <div className="pod-performance-hint">
+              Beats from {selectedWeekLabel || "selected week"} in review pending or iterate status
+            </div>
           </div>
           {beatPods.length > 0 ? (
             <div className="pod-tasks-bar-list">
@@ -2169,6 +2180,7 @@ export default function UnifiedOpsApp() {
   );
   const [productionErrorByPeriod, setProductionErrorByPeriod] = useState({});
   const [podWiseView, setPodWiseView] = useState("performance");
+  const [podWiseWeek, setPodWiseWeek] = useState("next");
   const [competitionData, setCompetitionData] = useState(null);
   const [competitionLoading, setCompetitionLoading] = useState(true);
   const [podTasksData, setPodTasksData] = useState(null);
@@ -2445,17 +2457,16 @@ export default function UnifiedOpsApp() {
       return undefined;
     }
 
-    if (podTasksData) {
-      return undefined;
-    }
-
     let cancelled = false;
 
     async function loadPodTasks() {
       setPodTasksLoading(true);
       setPodTasksError("");
       try {
-        const response = await fetch("/api/dashboard/pod-tasks", { cache: "no-store" });
+        const response = await fetch(
+          `/api/dashboard/pod-tasks?period=${encodeURIComponent(podWiseWeek)}`,
+          { cache: "no-store" }
+        );
         const payload = await readJson(response);
         if (!response.ok) {
           throw new Error(payload.error || "Unable to load POD tasks.");
@@ -2479,7 +2490,7 @@ export default function UnifiedOpsApp() {
     return () => {
       cancelled = true;
     };
-  }, [activeView, podWiseView, podTasksData]);
+  }, [activeView, podWiseView, podWiseWeek]);
 
   useEffect(() => {
     if (activeView !== "overview" || overviewPeriod !== "overview") {
@@ -3052,22 +3063,36 @@ export default function UnifiedOpsApp() {
                 title="POD Wise"
                 description="Conversion rates and output by POD lead."
                 actions={
-                  <div className="week-toggle-group">
-                    <button
-                      type="button"
-                      className={podWiseView === "performance" ? "is-active" : ""}
-                      onClick={() => setPodWiseView("performance")}
-                    >
-                      Performance
-                    </button>
-                    <button
-                      type="button"
-                      className={podWiseView === "tasks" ? "is-active" : ""}
-                      onClick={() => setPodWiseView("tasks")}
-                    >
-                      Tasks
-                    </button>
-                  </div>
+                  <>
+                    <div className="week-toggle-group">
+                      <button
+                        type="button"
+                        className={podWiseView === "performance" ? "is-active" : ""}
+                        onClick={() => setPodWiseView("performance")}
+                      >
+                        Performance
+                      </button>
+                      <button
+                        type="button"
+                        className={podWiseView === "tasks" ? "is-active" : ""}
+                        onClick={() => setPodWiseView("tasks")}
+                      >
+                        Tasks
+                      </button>
+                    </div>
+                    <div className="week-toggle-group">
+                      {POD_WISE_WEEK_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={podWiseWeek === option.id ? "is-active" : ""}
+                          onClick={() => setPodWiseWeek(option.id)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 }
               >
                 <PodWiseContent

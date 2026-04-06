@@ -3,7 +3,7 @@ import {
   POD_LEAD_ORDER,
   fetchEditorialTabRows,
 } from "../../../../lib/live-tab.js";
-import { getWeekSelection } from "../../../../lib/week-view.js";
+import { formatWeekRangeLabel, getWeekSelection, normalizeWeekView } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +12,12 @@ function normalizeKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-export async function GET() {
+export async function GET(request) {
+  const period = normalizeWeekView(new URL(request.url).searchParams.get("period") || "next");
+
   try {
     const { rows: editorialRows } = await fetchEditorialTabRows();
-    const nextWeek = getWeekSelection("next");
+    const selectedWeek = getWeekSelection(period);
 
     const pods = POD_LEAD_ORDER.map((podName) => {
       const podKey = normalizeKey(podName);
@@ -23,15 +25,15 @@ export async function GET() {
         (row) => normalizeKey(row.podLeadName) === podKey
       );
 
-      // Beats pending vs approved for next week
-      const nextWeekRows = podRows.filter((row) => {
+      // Beats pending vs approved for selected week
+      const selectedWeekRows = podRows.filter((row) => {
         const date = row.submittedDate || "";
-        return date >= nextWeek.weekStart && date <= nextWeek.weekEnd;
+        return date >= selectedWeek.weekStart && date <= selectedWeek.weekEnd;
       });
-      const approvedBeats = nextWeekRows.filter(
+      const approvedBeats = selectedWeekRows.filter(
         (row) => normalizeKey(row.status) === "approved for production by cl"
       ).length;
-      const pendingBeats = nextWeekRows.length - approvedBeats;
+      const pendingBeats = selectedWeekRows.length - approvedBeats;
 
       // Scripts to review (status = "Completed by writer")
       const scriptsToReview = podRows.filter(
@@ -46,7 +48,15 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ ok: true, pods });
+    return NextResponse.json({
+      ok: true,
+      period,
+      weekKey: selectedWeek.weekKey,
+      weekStart: selectedWeek.weekStart,
+      weekEnd: selectedWeek.weekEnd,
+      weekLabel: formatWeekRangeLabel(selectedWeek.weekStart, selectedWeek.weekEnd),
+      pods,
+    });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error.message || "Unable to load POD tasks." },
