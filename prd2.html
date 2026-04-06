@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fresh Takes - PRD v2 (Simple)</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f6f7f9;
+      color: #111;
+      font-family: Arial, sans-serif;
+      line-height: 1.45;
+    }
+    .page {
+      max-width: 940px;
+      margin: 24px auto;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+    }
+    .meta {
+      color: #666;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .note {
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border-left: 4px solid #444;
+      background: #fafafa;
+      font-size: 15px;
+    }
+
+    /* Numbering: 1, 1.1, 1.1.1 */
+    ol {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+      counter-reset: item;
+    }
+    li {
+      display: block;
+      margin: 8px 0;
+      counter-increment: item;
+    }
+    li::before {
+      content: counters(item, ".") ". ";
+      font-weight: 700;
+      margin-right: 8px;
+    }
+    li > ol {
+      margin-top: 6px;
+      margin-left: 34px;
+      padding-left: 0;
+    }
+    .level-1 > li {
+      font-size: 31px;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+    .level-2 > li {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .level-3 > li {
+      font-size: 21px;
+      font-weight: 400;
+      margin: 6px 0;
+    }
+    .section {
+      margin-top: 26px;
+      padding-top: 18px;
+      border-top: 1px solid #ececec;
+    }
+    .build-plan {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px dashed #ccc;
+    }
+    .build-plan h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    .build-plan ul {
+      margin: 0;
+      padding-left: 20px;
+      list-style: disc;
+    }
+    .build-plan ul li {
+      display: list-item;
+      counter-increment: none;
+      margin: 6px 0;
+      font-size: 16px;
+      font-weight: 400;
+    }
+    .build-plan ul li::before {
+      content: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Fresh Takes Dashboard - Simple PRD Flow</h1>
+    <div class="meta">Date: April 6, 2026</div>
+    <p class="note">Format: each section only shows <strong>what is there now</strong> and <strong>what should be there</strong>.</p>
+
+    <section class="section">
+      <ol class="level-1">
+        <li>Overview
+          <ol class="level-2">
+            <li>Beats
+              <ol class="level-3">
+                <li>What is there: Weekly beats snapshot and overview metrics.</li>
+                <li>What should be there: How many beats are we working on this week, and how many beats were delivered last week (approved only).</li>
+              </ol>
+            </li>
+            <li>Writer and POD output
+              <ol class="level-3">
+                <li>What is there: Writer/POD information is spread across different tabs.</li>
+                <li>What should be there: One combined view showing fresh takes delivered by each writer and each POD for last week (approved beats only).</li>
+              </ol>
+            </li>
+            <li>Production throughput
+              <ol class="level-3">
+                <li>What is there: Production throughput exists in the Production tab.</li>
+                <li>What should be there: Throughput per ACD directly visible inside Overview.</li>
+              </ol>
+            </li>
+            <li>Full Gen AI
+              <ol class="level-3">
+                <li>What is there: Gen AI readiness appears in analytics context.</li>
+                <li>What should be there: Count of assets moved to Full Gen AI for the selected week in Overview.</li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+
+        <li>Editorial Funnel
+          <ol class="level-2">
+            <li>POD throughput view
+              <ol class="level-3">
+                <li>What is there: Last week / This week / Overview / Next week views are present.</li>
+                <li>What should be there: POD-level throughput ranking as the default view.</li>
+              </ol>
+            </li>
+            <li>Writer drilldown
+              <ol class="level-3">
+                <li>What is there: Writer details are partially visible but fragmented.</li>
+                <li>What should be there: Writer-level throughput drilldown under each POD.</li>
+              </ol>
+            </li>
+            <li>Best POD indicator
+              <ol class="level-3">
+                <li>What is there: No clear best POD callout today.</li>
+                <li>What should be there: A clear best POD badge based on selected-week throughput score.</li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+
+        <li>POD Wise
+          <ol class="level-2">
+            <li>Week filtering
+              <ol class="level-3">
+                <li>What is there: Performance and Tasks views with week filter.</li>
+                <li>What should be there: Keep same behavior and maintain reliable filtering for both views.</li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+
+        <li>Other Existing Tabs
+          <ol class="level-2">
+            <li>Planner, Analytics, Production, Details
+              <ol class="level-3">
+                <li>What is there: These tabs are active and in use.</li>
+                <li>What should be there: No major UI changes; use them as data inputs for Overview and Editorial summaries.</li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+      </ol>
+    </section>
+
+    <section class="build-plan">
+      <h2>Very Short Build Plan</h2>
+      <ul>
+        <li>Add Overview cards/tables for writer-POD output, ACD throughput, and Full Gen AI count.</li>
+        <li>Add Editorial POD ranking, writer drilldown, and best POD indicator.</li>
+        <li>Keep existing tabs intact, only extend data wiring for these summaries.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
