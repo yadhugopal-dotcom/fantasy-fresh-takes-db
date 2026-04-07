@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import GanttTracker from "./GanttTracker.jsx";
 import { copyNodeImageToClipboard } from "../lib/clipboard-share.js";
+import { matchAngleName } from "../lib/fuzzy-match.js";
 import {
   buildPlannerBeatInventory,
   buildPlannerStageMetrics,
@@ -2168,8 +2169,16 @@ function BeatsPerformanceContent({
       const scriptCodeKey = normalizeStageMatchKey(row.scriptCode);
       const showKey = normalizeStageMatchKey(row.showName);
       const beatKey = normalizeStageMatchKey(row.beatName);
+      const fuzzyBeatMatch = matchAngleName(
+        row.beatName,
+        scopedRows
+          .filter((candidate) => normalizeStageMatchKey(candidate.showName) === showKey || !showKey)
+          .map((candidate) => candidate.beatName)
+          .filter(Boolean)
+      );
       const beatsAvailable = ideationAvailabilityRows.some(
         (candidate) =>
+          (fuzzyBeatMatch && candidate.beatKey === normalizeStageMatchKey(fuzzyBeatMatch)) ||
           (beatKey && candidate.beatKey === beatKey) ||
           (scriptCodeKey && candidate.beatCodeKey === scriptCodeKey) ||
           (beatKey && candidate.showKey === showKey && candidate.beatKey === beatKey)
@@ -2219,6 +2228,16 @@ function BeatsPerformanceContent({
         >
           {selectedPeriodOption?.label ? `${selectedPeriodOption.label}: ` : ""}
           {selectedPeriodRangeLabel}
+        </div>
+
+        <div
+          style={{
+            marginTop: -6,
+            fontSize: 12,
+            color: "var(--subtle)",
+          }}
+        >
+          Live updates daily at 5:00 AM IST. Other sheets refresh every 4 hours.
         </div>
 
         <div className="pod-summary-grid">
@@ -2294,7 +2313,6 @@ function BeatsPerformanceContent({
                   ["statusLabel", "Beat status"],
                   ["assignedDate", "Assign date"],
                   ["completedDate", "Complete date"],
-                  ["cycleDays", "Difference"],
                 ].map(([key, label]) => {
                   const isActive = detailSort.key === key;
                   const arrow = isActive ? (detailSort.direction === "asc" ? " ↑" : " ↓") : " ↕";
@@ -2353,13 +2371,12 @@ function BeatsPerformanceContent({
                       </td>
                       <td>{row.assignedDate ? formatDateLabel(row.assignedDate) : row.assignedDateRaw || row.rawBucketLabel || "-"}</td>
                       <td>{row.completedDate ? formatDateLabel(row.completedDate) : row.completedDateRaw || "-"}</td>
-                      <td>{row.cycleDays == null ? "-" : `${formatNumber(row.cycleDays)} d`}</td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="8" className="empty-cell">
+                  <td colSpan="7" className="empty-cell">
                     No detailed beats match the selected filters.
                   </td>
                 </tr>
