@@ -217,47 +217,26 @@ function toFiniteNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function classifyHitRateNextStep(row) {
-  const cpi = toFiniteNumber(row?.cpiUsd);
-  const cti = toFiniteNumber(row?.clickToInstall);
-
-  // Count baseline benchmark misses (same keys as analytics route, minus amountSpent)
-  const benchmarkChecks = {
-    threeSecPlays: (v) => v >= 35,
-    thruplaysTo3s: (v) => v >= 40,
-    q1Completion: (v) => v > 10,
-    cpi: (v) => v < 10,
-    absoluteCompletion: (v) => v > 1.5,
-    cti: (v) => v >= 12,
-    amountSpent: (v) => v > 100,
-  };
-  const metricValues = {
-    threeSecPlays: toFiniteNumber(row?.threeSecPlayPct),
-    thruplaysTo3s: toFiniteNumber(row?.thruPlayTo3sRatio),
-    q1Completion: toFiniteNumber(row?.video0To25Pct),
-    cpi,
-    absoluteCompletion: toFiniteNumber(row?.absoluteCompletionPct),
-    cti,
-    amountSpent: toFiniteNumber(row?.amountSpentUsd),
-  };
-
-  let missCount = 0;
-  for (const [key, check] of Object.entries(benchmarkChecks)) {
-    const val = metricValues[key];
-    if (!Number.isFinite(val) || !check(val)) missCount += 1;
-  }
-
-  // Prerequisite: amount spent must be >= $100
+function isFunnelSuccess(row) {
   const amountSpent = toFiniteNumber(row?.amountSpentUsd);
-  if (!Number.isFinite(amountSpent) || amountSpent < 100) return "Other";
+  const q1Completion = toFiniteNumber(row?.video0To25Pct);
+  const cti = toFiniteNumber(row?.clickToInstall);
+  const absoluteCompletion = toFiniteNumber(row?.absoluteCompletionPct);
+  const cpi = toFiniteNumber(row?.cpiUsd);
 
-  // Gen AI: CPI < $10 AND <= 2 benchmark misses
-  if (Number.isFinite(cpi) && cpi < 10 && missCount <= 2) return "Gen AI";
-
-  // P1 Rework: CTI >= 12%
-  if (Number.isFinite(cti) && cti >= 12) return "P1 Rework";
-
-  return "Other";
+  // ALL criteria must be met for success:
+  // 1. Amount spent >= $100
+  // 2. Q1 completion > 10%
+  // 3. CTI >= 12%
+  // 4. Absolute completion >= 1.8%
+  // 5. CPI <= $12
+  return (
+    Number.isFinite(amountSpent) && amountSpent >= 100 &&
+    Number.isFinite(q1Completion) && q1Completion > 10 &&
+    Number.isFinite(cti) && cti >= 12 &&
+    Number.isFinite(absoluteCompletion) && absoluteCompletion >= 1.8 &&
+    Number.isFinite(cpi) && cpi <= 12
+  );
 }
 
 function isBetterAttemptRow(nextRow, currentRow) {
@@ -299,24 +278,15 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
 
   const dedupedRows = Array.from(dedupMap.values());
 
-  let genAiCount = 0;
-  let p1ReworkCount = 0;
+  // Hit rate and funnel use only analytics-eligible production types
+  // Success = ALL criteria met: $100+ spent, Q1 > 10%, CTI >= 12%, Abs completion >= 1.8%
+  const eligibleRows = dedupedRows.filter((r) => isAnalyticsEligibleProductionType(r?.productionType));
+  let successCount = 0;
 
-  // Hit rate uses only analytics-eligible production types
-  for (const row of dedupedRows) {
-    if (!isAnalyticsEligibleProductionType(row?.productionType)) continue;
-    const step = classifyHitRateNextStep(row);
-    if (step === "Gen AI") genAiCount += 1;
-    if (step === "P1 Rework") p1ReworkCount += 1;
-  }
-
-  const analyticsEligibleCount = dedupedRows.filter((r) => isAnalyticsEligibleProductionType(r?.productionType)).length;
-
-  // Funnel includes all production types
   const funnelMap = new Map();
-  for (const row of dedupedRows) {
-    const step = classifyHitRateNextStep(row);
-    const isSuccess = step === "Gen AI" || step === "P1 Rework";
+  for (const row of eligibleRows) {
+    const isSuccess = isFunnelSuccess(row);
+    if (isSuccess) successCount += 1;
 
     const showName = String(row?.showName || "").trim() || "Unknown show";
     const beatName = String(row?.beatName || "").trim() || "Unknown beat";
@@ -329,12 +299,10 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
     if (isSuccess) entry.successfulAttempts += 1;
   }
 
-  const hitRateNumerator = genAiCount + p1ReworkCount;
-
   return {
-    hitRate: analyticsEligibleCount > 0 ? Number(((hitRateNumerator / analyticsEligibleCount) * 100).toFixed(1)) : null,
-    hitRateNumerator,
-    hitRateDenominator: analyticsEligibleCount,
+    hitRate: eligibleRows.length > 0 ? Number(((successCount / eligibleRows.length) * 100).toFixed(1)) : null,
+    hitRateNumerator: successCount,
+    hitRateDenominator: eligibleRows.length,
     beatsFunnel: (() => {
       const funnelRows = Array.from(funnelMap.values());
       const showSuccessMap = new Map();
@@ -356,7 +324,10 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
 function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = false } = {}) {
   const weekSelection = getWeekSelection("last");
   const weekLabel = formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd);
-  const freshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
+  const allFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
+  const freshTakeRows = includeNewShowsPod
+    ? allFreshTakeRows
+    : allFreshTakeRows.filter((row) => !isNonBauPodLeadName(row?.podLeadName));
   const tatSummary = buildTatSummaryFromRows(freshTakeRows);
   const hitRateData = buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod });
 

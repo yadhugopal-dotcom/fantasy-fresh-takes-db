@@ -125,10 +125,33 @@ function normalizeActionedState(payload) {
     }
   }
 
+  // Normalize global assets map
+  const safeAssets = safePayload.assets && typeof safePayload.assets === "object" ? safePayload.assets : {};
+  const normalizedAssets = {};
+  for (const [rawKey, rawEntry] of Object.entries(safeAssets)) {
+    const assetCodeKey = normalizeAssetCodeKey(rawKey);
+    if (!assetCodeKey) continue;
+    const entryIsObject = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry);
+    const actioned = entryIsObject ? Boolean(rawEntry.actioned) : Boolean(rawEntry);
+    if (!actioned) continue;
+    normalizedAssets[assetCodeKey] = {
+      actioned: true,
+      assetCode:
+        entryIsObject && typeof rawEntry.assetCode === "string" && rawEntry.assetCode.trim()
+          ? rawEntry.assetCode.trim()
+          : String(rawKey || "").trim(),
+      updatedAt:
+        entryIsObject && typeof rawEntry.updatedAt === "string" && rawEntry.updatedAt.trim()
+          ? rawEntry.updatedAt.trim()
+          : null,
+    };
+  }
+
   return {
     updatedAt:
       typeof safePayload.updatedAt === "string" && safePayload.updatedAt.trim() ? safePayload.updatedAt.trim() : null,
     weeks: normalizedWeeks,
+    assets: normalizedAssets,
   };
 }
 
@@ -137,52 +160,57 @@ async function readActionedState() {
 }
 
 function getActionedValue(actionedState, weekKey, assetCode) {
-  const safeWeekKey = normalizeWeekKey(weekKey);
   const assetCodeKey = normalizeAssetCodeKey(assetCode);
-
-  if (!safeWeekKey || !assetCodeKey) {
+  if (!assetCodeKey) {
     return false;
   }
 
-  return Boolean(actionedState?.weeks?.[safeWeekKey]?.[assetCodeKey]?.actioned);
+  // Check global (week-independent) actioned state first
+  if (actionedState?.assets?.[assetCodeKey]?.actioned) {
+    return true;
+  }
+
+  // Fall back to legacy per-week state for backwards compatibility
+  const safeWeekKey = normalizeWeekKey(weekKey);
+  if (safeWeekKey && actionedState?.weeks?.[safeWeekKey]?.[assetCodeKey]?.actioned) {
+    return true;
+  }
+
+  return false;
 }
 
 function buildUpdatedActionedState(actionedState, weekKey, assetCode, actioned) {
-  const safeWeekKey = normalizeWeekKey(weekKey);
   const safeAssetCode = String(assetCode || "").trim();
   const assetCodeKey = normalizeAssetCodeKey(safeAssetCode);
+
+  // Preserve existing state
   const nextWeeks = {
     ...(actionedState?.weeks && typeof actionedState.weeks === "object" ? actionedState.weeks : {}),
   };
-
-  if (!safeWeekKey || !assetCodeKey) {
-    return normalizeActionedState({ weeks: nextWeeks });
-  }
-
-  const nextWeekEntries = {
-    ...(nextWeeks[safeWeekKey] && typeof nextWeeks[safeWeekKey] === "object" ? nextWeeks[safeWeekKey] : {}),
+  const nextAssets = {
+    ...(actionedState?.assets && typeof actionedState.assets === "object" ? actionedState.assets : {}),
   };
 
+  if (!assetCodeKey) {
+    return { ...normalizeActionedState({ weeks: nextWeeks }), assets: nextAssets };
+  }
+
+  // Write to global assets map (week-independent)
   if (actioned) {
-    nextWeekEntries[assetCodeKey] = {
+    nextAssets[assetCodeKey] = {
       actioned: true,
       assetCode: safeAssetCode,
       updatedAt: new Date().toISOString(),
     };
-    nextWeeks[safeWeekKey] = nextWeekEntries;
   } else {
-    delete nextWeekEntries[assetCodeKey];
-    if (Object.keys(nextWeekEntries).length > 0) {
-      nextWeeks[safeWeekKey] = nextWeekEntries;
-    } else {
-      delete nextWeeks[safeWeekKey];
-    }
+    delete nextAssets[assetCodeKey];
   }
 
-  return normalizeActionedState({
+  return {
+    ...normalizeActionedState({ weeks: nextWeeks }),
     updatedAt: new Date().toISOString(),
-    weeks: nextWeeks,
-  });
+    assets: nextAssets,
+  };
 }
 
 function formatMonthWeekLabel(weekStart) {
@@ -545,6 +573,7 @@ export async function PUT(request) {
     const payload = {
       updatedAt: nextState.updatedAt || new Date().toISOString(),
       weeks: nextState.weeks,
+      assets: nextState.assets || {},
     };
 
     await writeJsonObject(ACTIONED_STATE_PATH, payload);

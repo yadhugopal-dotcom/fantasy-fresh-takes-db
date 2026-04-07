@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fresh Takes Dashboard — PRD</title>
+  <style>
+    :root {
+      --cream: #f5f0ea;
+      --parchment: #ede7dd;
+      --terracotta: #c4704b;
+      --terra-light: #e8c4af;
+      --forest: #1a4731;
+      --forest-light: #2e6b4d;
+      --charcoal: #2c2c2c;
+      --muted: #6b6560;
+      --border: #ddd5c8;
+      --white: #ffffff;
+      --amber: #d97706;
+      --red: #b91c1c;
+      --green: #15803d;
+      --blue: #1d4ed8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--cream); color: var(--charcoal); line-height: 1.65; font-size: 15px; }
+    .page { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    nav { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--parchment); border-right: 1px solid var(--border); padding: 28px 0; }
+    nav .brand { font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: var(--terracotta); padding: 0 24px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    nav .brand span { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; letter-spacing: .04em; text-transform: uppercase; }
+    nav a { display: block; padding: 7px 24px; font-size: 13px; color: var(--charcoal); text-decoration: none; border-left: 3px solid transparent; }
+    nav a:hover { color: var(--terracotta); }
+    nav a.active { border-left-color: var(--terracotta); color: var(--terracotta); font-weight: 600; }
+    nav .section-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 18px 24px 6px; }
+    main { padding: 48px 64px 80px; max-width: 960px; }
+    h1 { font-family: Georgia, serif; font-size: 34px; font-weight: 700; color: var(--forest); line-height: 1.2; margin-bottom: 8px; }
+    h2 { font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: var(--forest); margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--terra-light); }
+    h3 { font-size: 15px; font-weight: 700; color: var(--charcoal); margin: 28px 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+    h4 { font-size: 14px; font-weight: 600; color: var(--terracotta); margin: 20px 0 8px; }
+    p { margin-bottom: 12px; color: #3a3530; }
+    ul, ol { margin: 10px 0 14px 20px; }
+    li { margin-bottom: 5px; }
+    strong { color: var(--charcoal); }
+    .hero { background: linear-gradient(135deg, var(--forest) 0%, var(--forest-light) 100%); border-radius: 12px; padding: 32px 36px; margin-bottom: 40px; color: var(--cream); }
+    .hero h1 { color: var(--cream); margin-bottom: 6px; }
+    .hero .subtitle { color: #b8d9c7; font-size: 14px; margin: 0; }
+    .hero .meta { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
+    .hero .meta-item { font-size: 12px; color: #8fdbb1; }
+    .hero .meta-item strong { display: block; font-size: 13px; color: var(--cream); }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 10px; border-radius: 20px; text-transform: uppercase; }
+    .badge-new { background: #dcfce7; color: var(--green); }
+    .badge-enhance { background: #fef3c7; color: var(--amber); }
+    .badge-existing { background: #e0e7ff; color: var(--blue); }
+    .badge-p1 { background: #fee2e2; color: var(--red); font-weight: 700; }
+    .badge-p2 { background: #fef3c7; color: var(--amber); }
+    .badge-p3 { background: #f1f5f9; color: var(--muted); }
+    .badge-launched { background: #dcfce7; color: var(--green); }
+    .badge-stable { background: #e0e7ff; color: var(--blue); }
+    .badge-needs-work { background: #fef3c7; color: var(--amber); }
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--charcoal); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+    .feature-card { border: 1px solid var(--border); border-radius: 8px; padding: 18px; background: var(--cream); }
+    .feature-card h4 { margin: 0 0 6px; font-size: 13px; }
+    .feature-card p { font-size: 13px; margin: 0; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th { background: var(--parchment); text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 2px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--cream); }
+    .callout { display: flex; gap: 14px; padding: 16px 20px; border-radius: 8px; margin: 20px 0; font-size: 13.5px; }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+    section { scroll-margin-top: 20px; }
+    .metric-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--forest); color: #8fdbb1; border-radius: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; margin: 3px 3px 3px 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .priority-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .priority-row:last-child { border-bottom: none; }
+    .priority-num { font-size: 22px; font-weight: 700; color: var(--terra-light); min-width: 32px; line-height: 1; }
+    .priority-content h4 { margin: 0 0 4px; color: var(--charcoal); font-size: 14px; }
+    .priority-content p { margin: 0; font-size: 13px; color: var(--muted); }
+    a { color: var(--terracotta); }
+    pre { background: #f1ece5; padding: 14px; border-radius: 6px; font-size: 12px; overflow-x: auto; margin: 10px 0; }
+    .exec-summary { background: var(--white); border-left: 4px solid var(--terracotta); border-radius: 0 10px 10px 0; padding: 24px 28px; margin-bottom: 32px; }
+    .exec-summary h3 { margin-top: 0; color: var(--terracotta); text-transform: none; letter-spacing: 0; font-size: 16px; }
+    .exec-summary ul { margin: 12px 0 0 18px; }
+    .exec-summary li { font-size: 14px; margin-bottom: 8px; color: #3a3530; }
+    .pipeline-diagram { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin: 20px 0; font-size: 13px; overflow-x: auto; }
+    .pipeline-flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin: 16px 0 8px; }
+    .pipeline-stage { background: var(--forest); color: var(--cream); padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .pipeline-arrow { color: var(--terra-light); font-size: 18px; padding: 0 6px; font-weight: 700; }
+    .north-star { background: linear-gradient(135deg, var(--forest) 0%, var(--forest-light) 100%); border-radius: 10px; padding: 24px 28px; margin: 20px 0; color: var(--cream); }
+    .north-star h4 { color: var(--terra-light); margin-top: 0; }
+    .north-star p { color: #b8d9c7; margin-bottom: 8px; }
+    .north-star .ns-metric { font-family: Georgia, serif; font-size: 22px; color: var(--cream); font-weight: 700; }
+    /* Tab flow wireframe */
+    .tab-flow { margin: 20px 0; }
+    .tab-bar { display: flex; gap: 0; margin-bottom: 0; }
+    .tab-item { padding: 10px 18px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; background: var(--parchment); color: var(--muted); cursor: default; position: relative; z-index: 1; margin-right: -1px; }
+    .tab-item.tab-active { background: var(--white); color: var(--terracotta); border-bottom: 1px solid var(--white); z-index: 2; }
+    .tab-item.tab-new { background: var(--forest); color: var(--cream); border-color: var(--forest); }
+    .tab-item.tab-new::after { content: "NEW"; font-size: 8px; background: var(--terracotta); color: white; padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+    .tab-body { border: 1px solid var(--border); border-radius: 0 8px 8px 8px; background: var(--white); padding: 20px; }
+    .wireframe-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .wire-col { border: 1.5px dashed var(--border); border-radius: 8px; padding: 14px; background: var(--cream); min-height: 120px; }
+    .wire-col-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--terracotta); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .wire-col-header .wire-icon { font-size: 14px; }
+    .wire-hero-num { font-family: Georgia, serif; font-size: 28px; font-weight: 700; color: var(--forest); line-height: 1; }
+    .wire-hero-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .wire-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--charcoal); }
+    .wire-row:last-child { border-bottom: none; }
+    .wire-bar { height: 6px; border-radius: 3px; background: var(--terra-light); }
+    .wire-bar-fill { height: 100%; border-radius: 3px; background: var(--terracotta); }
+    .wire-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+    .wire-badge-g { background: #dcfce7; color: var(--green); }
+    .wire-badge-a { background: #fef3c7; color: var(--amber); }
+    .wire-badge-r { background: #fee2e2; color: var(--red); }
+    .wire-subtabs { display: flex; gap: 0; margin-bottom: 12px; }
+    .wire-subtab { padding: 5px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: var(--parchment); color: var(--muted); border: 1px solid var(--border); cursor: default; }
+    .wire-subtab:first-child { border-radius: 5px 0 0 5px; }
+    .wire-subtab:last-child { border-radius: 0 5px 5px 0; margin-right: 0; }
+    .wire-subtab.wire-subtab-active { background: var(--forest); color: var(--cream); border-color: var(--forest); }
+    .wire-subtab + .wire-subtab { margin-left: -1px; }
+    .wire-section-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 6px; font-weight: 600; }
+    .wire-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 740px) { .feature-grid { grid-template-columns: 1fr; } .page { grid-template-columns: 1fr; } nav { display: none; } main { padding: 24px; } .pipeline-flow { flex-direction: column; gap: 4px; } .pipeline-arrow { transform: rotate(90deg); } .wireframe-cols { grid-template-columns: 1fr; } .wire-2col { grid-template-columns: 1fr; } .tab-bar { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <div class="brand">Fresh Takes Dashboard<span>Product Requirements Document</span></div>
+  <div class="section-label">Strategy</div>
+  <a href="#exec-summary">Executive Summary</a>
+  <a href="#tab-flow">Tab &amp; Column Flow</a>
+  <a href="#pipeline-model">Content Operations Model</a>
+  <a href="#north-star">North Star Metric</a>
+  <a href="#strategic-goals">Strategic Goals</a>
+  <a href="#users">Stakeholders</a>
+  <div class="section-label">New Capabilities</div>
+  <a href="#feat-overview-tab">Content Ops Command Center</a>
+  <a href="#feat-editorial-enhance">Editorial Velocity Engine</a>
+  <div class="section-label">Current Capabilities</div>
+  <a href="#exist-editorial">Editorial Funnel</a>
+  <a href="#exist-pod-wise">POD Wise</a>
+  <a href="#exist-planner">Planner</a>
+  <a href="#exist-analytics">Analytics</a>
+  <a href="#exist-production">Production</a>
+  <a href="#exist-details">Details</a>
+  <div class="section-label">Execution</div>
+  <a href="#delivery-phases">Delivery Phases</a>
+  <a href="#risks">Risks &amp; Dependencies</a>
+  <a href="#open-questions">Open Questions</a>
+</nav>
+
+<main>
+
+  <div class="hero">
+    <h1>Fresh Takes Dashboard</h1>
+    <p class="subtitle">Content Operations Intelligence Platform &mdash; PRD v2.0</p>
+    <div class="meta">
+      <div class="meta-item"><strong>Date</strong>April 2026</div>
+      <div class="meta-item"><strong>Status</strong>In Review</div>
+      <div class="meta-item"><strong>Audience</strong>VP Editorial, Content Ops, Production, Strategy</div>
+      <div class="meta-item"><strong>North Star</strong>Content-to-Scale Cycle Time</div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <section id="exec-summary">
+    <div class="exec-summary">
+      <h3>Executive Summary</h3>
+      <ul>
+        <li><strong>The problem:</strong> Leadership burns 15+ minutes each week stitching together writer output, production throughput, and scale-readiness signals across four different tabs &mdash; decisions that should take 60 seconds are delayed by fragmented tooling.</li>
+        <li><strong>The investment:</strong> Two targeted capability additions &mdash; a Content Ops Command Center (Overview Tab) and an Editorial Velocity Engine (POD-level throughput) &mdash; that unify the three questions every content leader asks on Monday morning: <em>How much did we ship? How fast did production move? What's ready to scale?</em></li>
+        <li><strong>The expected return:</strong> Reduce weekly leadership review time by 80%, surface underperforming PODs before the week closes, and shorten the content-to-scale decision cycle by bringing production and analytics signals into the same line of sight as editorial output.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- TAB & COLUMN FLOW -->
+  <section id="tab-flow">
+    <h2>Dashboard Structure &amp; Tab Flow</h2>
+    <p>The dashboard is organized into seven tabs, each mapping to a stage or lens of the content pipeline. Below is the structural wireframe showing how tabs, sub-views, and columns flow.</p>
+
+    <!-- OVERVIEW TAB WIREFRAME -->
+    <div class="tab-flow">
+      <div class="tab-bar">
+        <div class="tab-item tab-new tab-active">Overview</div>
+        <div class="tab-item">Editorial</div>
+        <div class="tab-item">POD Wise</div>
+        <div class="tab-item">Planner</div>
+        <div class="tab-item">Analytics</div>
+        <div class="tab-item">Production</div>
+        <div class="tab-item">Details</div>
+      </div>
+      <div class="tab-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px"><strong>Overview Tab</strong> &mdash; A cross-functional command center with four subsections. Each mirrors a deeper tab, giving leadership the full pipeline picture in one scroll.</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <span style="font-size:11px;color:var(--muted);font-weight:600">WEEK:</span>
+          <span style="background:var(--parchment);border:1px solid var(--border);border-radius:5px;padding:4px 14px;font-size:11px;font-weight:600;color:var(--charcoal)">Mar 24 &ndash; Mar 30, 2026 &nbsp;&#9662;</span>
+        </div>
+
+        <!-- SUBSECTION 1: BEATS -->
+        <div class="wire-col" style="margin-bottom:14px;border-color:var(--forest)">
+          <div class="wire-col-header" style="font-size:12px"><span class="wire-icon">&#9836;</span> Beats</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+            <div style="text-align:center;flex:1;min-width:100px">
+              <div class="wire-hero-num">48</div>
+              <div class="wire-hero-sub">Beats to be made</div>
+            </div>
+            <div style="text-align:center;flex:1;min-width:100px">
+              <div class="wire-hero-num">41</div>
+              <div class="wire-hero-sub">Beats made</div>
+            </div>
+            <div style="text-align:center;flex:1;min-width:100px">
+              <div class="wire-hero-num">36</div>
+              <div class="wire-hero-sub">Assets made</div>
+            </div>
+            <div style="text-align:center;flex:1;min-width:100px">
+              <div class="wire-hero-num" style="color:var(--red)">5</div>
+              <div class="wire-hero-sub" style="color:var(--red);font-weight:600">Assets away from beats</div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-style:italic">Red highlight on any shortfall between assets made and beats committed &mdash; immediate gap signal</div>
+        </div>
+
+        <!-- SUBSECTION 2: WRITING -->
+        <div class="wire-col" style="margin-bottom:14px;border-color:var(--terracotta)">
+          <div class="wire-col-header" style="font-size:12px"><span class="wire-icon">&#9997;</span> Writing</div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px">POD-level view &mdash; expand any POD to see individual writer throughput</p>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">
+            <div class="wire-row" style="font-weight:700;border-bottom:2px solid var(--border)"><span>POD</span> <span style="display:flex;gap:20px;font-size:10px;text-transform:uppercase;letter-spacing:.04em"><span>Beats Delivered</span><span>Submitted for Prod</span><span>Produced</span><span>Live Ads</span></span></div>
+            <div class="wire-row" style="font-weight:600;cursor:pointer"><span>&#9660; POD A &mdash; Ritu</span> <span style="display:flex;gap:44px;font-size:12px"><span class="wire-badge wire-badge-g">12</span><span>10</span><span>8</span><span>6</span></span></div>
+            <div style="padding-left:20px;background:#fafaf7">
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;Anika Sharma</span> <span style="display:flex;gap:52px;font-size:11px"><span>4</span><span>3</span><span>3</span><span>2</span></span></div>
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;Raj Patel</span> <span style="display:flex;gap:52px;font-size:11px"><span>5</span><span>4</span><span>3</span><span>3</span></span></div>
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;Meera Iyer</span> <span style="display:flex;gap:52px;font-size:11px"><span>3</span><span>3</span><span>2</span><span>1</span></span></div>
+            </div>
+            <div class="wire-row" style="font-weight:600"><span>&#9654; POD B &mdash; Arvind</span> <span style="display:flex;gap:44px;font-size:12px"><span class="wire-badge wire-badge-g">11</span><span>9</span><span>7</span><span>5</span></span></div>
+            <div class="wire-row" style="font-weight:600"><span>&#9654; POD C &mdash; Neha</span> <span style="display:flex;gap:44px;font-size:12px"><span class="wire-badge wire-badge-a">8</span><span>6</span><span>5</span><span>3</span></span></div>
+            <div class="wire-row" style="font-weight:600"><span>&#9654; POD D &mdash; Saurabh</span> <span style="display:flex;gap:44px;font-size:12px"><span class="wire-badge wire-badge-r">5</span><span>4</span><span>3</span><span>2</span></span></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-style:italic">Columns track full writer lifecycle: beats delivered &rarr; submitted for production &rarr; produced &rarr; live ads</div>
+        </div>
+
+        <!-- SUBSECTION 3: PRODUCTION -->
+        <div class="wire-col" style="margin-bottom:14px;border-color:var(--forest-light)">
+          <div class="wire-col-header" style="font-size:12px"><span class="wire-icon">&#127916;</span> Production</div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px">CD-level view &mdash; expand to see individual ACDs. Ranked by minutes produced.</p>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">
+            <div class="wire-row" style="font-weight:700;border-bottom:2px solid var(--border)"><span>Team</span> <span style="display:flex;gap:24px;font-size:10px;text-transform:uppercase;letter-spacing:.04em"><span>Min Produced</span><span>Images</span><span>Rank</span></span></div>
+            <div class="wire-row" style="font-weight:600;cursor:pointer"><span>&#9660; CD Vikram</span> <span style="display:flex;gap:40px;font-size:12px"><span>1,280 min</span><span>342</span><span style="color:var(--terracotta)">#1</span></span></div>
+            <div style="padding-left:20px;background:#fafaf7">
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;ACD Priya</span> <span style="display:flex;gap:46px;font-size:11px"><span>480 min</span><span>128</span><span></span></span></div>
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;ACD Kunal</span> <span style="display:flex;gap:46px;font-size:11px"><span>420 min</span><span>112</span><span></span></span></div>
+              <div class="wire-row" style="color:var(--muted);font-size:11px"><span>&nbsp;&nbsp;ACD Meera</span> <span style="display:flex;gap:46px;font-size:11px"><span>380 min</span><span>102</span><span></span></span></div>
+            </div>
+            <div class="wire-row" style="font-weight:600"><span>&#9654; CD Sunita</span> <span style="display:flex;gap:40px;font-size:12px"><span>1,060 min</span><span>287</span><span style="color:var(--terracotta)">#2</span></span></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-style:italic">Ranked by total minutes produced. Images produced shown alongside.</div>
+        </div>
+
+        <!-- SUBSECTION 4: PERFORMANCE OF GA CODES -->
+        <div class="wire-col" style="border-color:var(--amber)">
+          <div class="wire-col-header" style="font-size:12px"><span class="wire-icon">&#9889;</span> Performance of GA Codes</div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px">RAG-coded performance table &mdash; mirrors Analytics tab classification. Green = Gen AI ready, Amber = rework candidate, Red = underperforming / drop.</p>
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px">
+            <div class="wire-row" style="font-weight:700;border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em"><span>Asset</span> <span style="display:flex;gap:16px"><span>CPI</span><span>Spend</span><span>CTI</span><span>Status</span><span>Gen AI Ready</span></span></div>
+            <div class="wire-row" style="background:#f0fdf4"><span>Asset #1204</span> <span style="display:flex;gap:16px;font-size:12px"><span>$6.20</span><span>$340</span><span>18%</span><span class="wire-badge wire-badge-g">Gen AI</span><span style="color:var(--green);font-weight:700">&#10003; Ready</span></span></div>
+            <div class="wire-row" style="background:#f0fdf4"><span>Asset #1187</span> <span style="display:flex;gap:16px;font-size:12px"><span>$7.80</span><span>$210</span><span>15%</span><span class="wire-badge wire-badge-g">Gen AI</span><span style="color:var(--green);font-weight:700">&#10003; Ready</span></span></div>
+            <div class="wire-row" style="background:#fffbeb"><span>Asset #1195</span> <span style="display:flex;gap:16px;font-size:12px"><span>$12.40</span><span>$180</span><span>14%</span><span class="wire-badge wire-badge-a">P1 Rework</span><span style="color:var(--muted)">&#8212;</span></span></div>
+            <div class="wire-row" style="background:#fef2f2"><span>Asset #1210</span> <span style="display:flex;gap:16px;font-size:12px"><span>$22.00</span><span>$90</span><span>6%</span><span class="wire-badge wire-badge-r">Drop</span><span style="color:var(--muted)">&#8212;</span></span></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">Row background = RAG signal. "Gen AI Ready" column flags assets cleared for full-scale generation.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- EDITORIAL TAB WIREFRAME -->
+    <div class="tab-flow">
+      <div class="tab-bar">
+        <div class="tab-item">Overview</div>
+        <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white)">Editorial</div>
+        <div class="tab-item">POD Wise</div>
+        <div class="tab-item">Planner</div>
+        <div class="tab-item">Analytics</div>
+        <div class="tab-item">Production</div>
+        <div class="tab-item">Details</div>
+      </div>
+      <div class="tab-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Editorial Funnel</strong> &mdash; Four sub-views mapping to the editorial cadence. POD Leaderboard is injected at the top of Overview &amp; Last Week.</p>
+        <div class="wire-subtabs">
+          <div class="wire-subtab wire-subtab-active">Overview</div>
+          <div class="wire-subtab">Last Week</div>
+          <div class="wire-subtab">This Week</div>
+          <div class="wire-subtab">Next Week</div>
+        </div>
+        <div class="wire-2col">
+          <div class="wire-col" style="grid-column:1/-1;min-height:auto;border-color:var(--terracotta);border-style:dashed;background:#fdf8f4">
+            <div class="wire-col-header" style="color:var(--terracotta)"><span class="wire-icon">&#127942;</span> POD Throughput Leaderboard <span class="badge badge-enhance" style="font-size:9px">New</span></div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <div style="flex:1;min-width:140px;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+                <div style="font-size:18px;font-weight:700;color:#d4a017">&#9679;</div>
+                <div style="font-size:11px;font-weight:700;color:var(--charcoal)">POD A &mdash; Ritu</div>
+                <div style="font-size:20px;font-weight:700;color:var(--green)">92%</div>
+                <div style="font-size:10px;color:var(--muted)">11/12 beats delivered</div>
+              </div>
+              <div style="flex:1;min-width:140px;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+                <div style="font-size:18px;font-weight:700;color:#a0a0a0">&#9679;</div>
+                <div style="font-size:11px;font-weight:700;color:var(--charcoal)">POD B &mdash; Arvind</div>
+                <div style="font-size:20px;font-weight:700;color:var(--green)">83%</div>
+                <div style="font-size:10px;color:var(--muted)">10/12 beats delivered</div>
+              </div>
+              <div style="flex:1;min-width:140px;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+                <div style="font-size:18px;font-weight:700;color:#cd7f32">&#9679;</div>
+                <div style="font-size:11px;font-weight:700;color:var(--charcoal)">POD C &mdash; Neha</div>
+                <div style="font-size:20px;font-weight:700;color:var(--amber)">67%</div>
+                <div style="font-size:10px;color:var(--muted)">8/12 beats delivered</div>
+              </div>
+              <div style="flex:1;min-width:140px;background:var(--white);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+                <div style="font-size:11px;font-weight:700;color:var(--charcoal)">POD D &mdash; Saurabh</div>
+                <div style="font-size:20px;font-weight:700;color:var(--red)">50%</div>
+                <div style="font-size:10px;color:var(--muted)">6/12 beats delivered</div>
+              </div>
+            </div>
+          </div>
+          <div class="wire-col" style="min-height:auto">
+            <div class="wire-col-header">Beat Lifecycle Table</div>
+            <div class="wire-row"><span style="font-weight:600">Beat</span> <span style="font-weight:600">Contributors &bull; Days &bull; Outcome</span></div>
+            <div class="wire-row"><span>The Hidden Crown</span> <span>3 writers &bull; 5d &bull; Pass</span></div>
+            <div class="wire-row"><span>Night Protocol</span> <span>2 writers &bull; 7d &bull; Fail</span></div>
+          </div>
+          <div class="wire-col" style="min-height:auto">
+            <div class="wire-col-header">Summary Metrics</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span class="metric-pill">Fresh takes released</span>
+              <span class="metric-pill">Production TAT</span>
+              <span class="metric-pill">Hit rate</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic">Week selector drives all panels</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMAINING TABS SUMMARY -->
+    <div class="tab-flow">
+      <div class="tab-bar">
+        <div class="tab-item">Overview</div>
+        <div class="tab-item">Editorial</div>
+        <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white)">POD Wise</div>
+        <div class="tab-item">Planner</div>
+        <div class="tab-item">Analytics</div>
+        <div class="tab-item">Production</div>
+        <div class="tab-item">Details</div>
+      </div>
+      <div class="tab-body" style="padding:16px 20px">
+        <div class="wire-subtabs" style="margin-bottom:10px">
+          <div class="wire-subtab wire-subtab-active">Performance</div>
+          <div class="wire-subtab">Tasks</div>
+        </div>
+        <div class="wire-2col">
+          <div style="font-size:12px;color:var(--charcoal)">
+            <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Performance</strong>
+            <div style="margin-top:6px">4 summary cards &rarr; POD ranking bars &rarr; Period toggle (Lifetime / Week)</div>
+          </div>
+          <div style="font-size:12px;color:var(--charcoal)">
+            <strong style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Tasks</strong>
+            <div style="margin-top:6px">2 summary cards &rarr; Scripts pending bars &rarr; Beats pending bars</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+      <!-- Planner -->
+      <div class="tab-flow" style="margin:0">
+        <div class="tab-bar">
+          <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white);font-size:11px;padding:8px 12px">Planner</div>
+        </div>
+        <div class="tab-body" style="padding:14px;font-size:12px;color:var(--charcoal)">
+          Gantt board (brush-paint) &rarr; Roster manager &rarr; Beat picker &rarr; Week nav &amp; commit &rarr; Share
+        </div>
+      </div>
+      <!-- Analytics -->
+      <div class="tab-flow" style="margin:0">
+        <div class="tab-bar">
+          <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white);font-size:11px;padding:8px 12px">Analytics</div>
+        </div>
+        <div class="tab-body" style="padding:14px;font-size:12px;color:var(--charcoal)">
+          Classification table (Gen AI / P1 / P2 / Drop) &rarr; Metric toggles &rarr; Actioned checkbox &rarr; Week selector
+        </div>
+      </div>
+      <!-- Production -->
+      <div class="tab-flow" style="margin:0">
+        <div class="tab-bar">
+          <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white);font-size:11px;padding:8px 12px">Production</div>
+        </div>
+        <div class="tab-body" style="padding:14px;font-size:12px;color:var(--charcoal)">
+          ACD sync trigger &rarr; Stacked bar chart (ACD/CD) &rarr; Adherence issues &rarr; Troubleshooting
+        </div>
+      </div>
+      <!-- Details -->
+      <div class="tab-flow" style="margin:0">
+        <div class="tab-bar">
+          <div class="tab-item tab-active" style="background:var(--white);color:var(--terracotta);border-bottom:1px solid var(--white);font-size:11px;padding:8px 12px">Details</div>
+        </div>
+        <div class="tab-body" style="padding:14px;font-size:12px;color:var(--charcoal)">
+          Teams tracked &rarr; Analytics legend &rarr; Classification logic docs &rarr; Actioned state notes
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENT OPERATIONS MODEL -->
+  <section id="pipeline-model">
+    <h2>Content Operations Model</h2>
+    <p>Fresh Takes operates a vertically integrated content pipeline. Every asset moves through a defined lifecycle &mdash; and every stage of that lifecycle has a measurable throughput signal that this dashboard captures.</p>
+    <div class="pipeline-diagram">
+      <p style="text-align:center;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Content-to-Scale Pipeline</p>
+      <div class="pipeline-flow">
+        <div class="pipeline-stage">Ideation</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Beat Approval</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Scripting</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Review</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Production</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Analytics</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-stage">Scale Decision</div>
+      </div>
+      <table style="margin-top:20px">
+        <thead><tr><th>Pipeline Stage</th><th>Primary Metric</th><th>Dashboard Surface</th></tr></thead>
+        <tbody>
+          <tr><td>Ideation &rarr; Beat Approval</td><td>Beats committed per week per POD</td><td>Editorial Funnel, Planner</td></tr>
+          <tr><td>Scripting &rarr; Review</td><td>Fresh takes delivered on approved beats</td><td>Editorial Funnel (This Week), <strong>Overview Tab (new)</strong></td></tr>
+          <tr><td>Review &rarr; Production</td><td>Ready-for-Prod conversion rate</td><td>Editorial Funnel (Last Week)</td></tr>
+          <tr><td>Production</td><td>ACD output (minutes / image units)</td><td>Production, <strong>Overview Tab (new)</strong></td></tr>
+          <tr><td>Analytics</td><td>CPI, spend, completion rates, hit rate</td><td>Analytics</td></tr>
+          <tr><td>Scale Decision</td><td>Assets moved to Full Gen AI</td><td>Analytics, <strong>Overview Tab (new)</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The current platform captures every stage &mdash; but forces leadership to assemble the cross-stage picture manually. The capability additions in this PRD close that gap.</p>
+  </section>
+
+  <!-- NORTH STAR METRIC -->
+  <section id="north-star">
+    <h2>North Star Metric</h2>
+    <div class="north-star">
+      <h4>North Star</h4>
+      <div class="ns-metric">Content-to-Scale Cycle Time</div>
+      <p style="margin-top:10px">The elapsed time from beat approval to a Full Gen AI scale decision. This single number captures the health of the entire pipeline &mdash; editorial velocity, production throughput, and analytics turnaround &mdash; in one measure.</p>
+      <p><strong style="color:var(--cream)">Target:</strong> Reduce median cycle time by 20% within two quarters of Overview Tab launch.</p>
+    </div>
+    <h3>Supporting KPIs</h3>
+    <table>
+      <thead><tr><th>KPI</th><th>Current Signal</th><th>Target</th></tr></thead>
+      <tbody>
+        <tr><td>Weekly leadership review time</td><td>15+ min across 4 tabs</td><td>&lt; 60 seconds via Overview Tab</td></tr>
+        <tr><td>POD throughput visibility</td><td>Requires manual cross-referencing</td><td>Single leaderboard, auto-ranked</td></tr>
+        <tr><td>Scale-decision latency</td><td>Gen AI eligibility buried in Analytics</td><td>Surfaced in Overview with actioned state</td></tr>
+        <tr><td>Weekly Overview adoption</td><td>N/A (tab doesn't exist)</td><td>80%+ of leadership weeks</td></tr>
+        <tr><td>New manual data sources introduced</td><td>0</td><td>0 (all derived from existing pipelines)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- STRATEGIC GOALS -->
+  <section id="strategic-goals">
+    <h2>Strategic Goals</h2>
+    <h3>Why Now</h3>
+    <p>The editorial operation has scaled to the point where individual-tab navigation creates a measurable drag on decision speed. POD leads lack a self-service benchmark to course-correct mid-week. Production output and scale-readiness signals live in separate views with no connective tissue. These are not feature gaps &mdash; they are <strong>operational intelligence gaps</strong> that compound every week they remain unfilled.</p>
+
+    <h3>Desired Outcomes</h3>
+    <div class="feature-grid">
+      <div class="feature-card"><h4>60-Second Leadership Briefing</h4><p>A VP of Editorial opens one tab and knows: total fresh takes shipped, which POD led, how production tracked, and what's ready to scale. No tab-switching. No mental math.</p></div>
+      <div class="feature-card"><h4>Self-Service POD Benchmarking</h4><p>POD leads see where they rank against peers on throughput %, enabling mid-week intervention without waiting for a weekly review.</p></div>
+      <div class="feature-card"><h4>Scale-Readiness at a Glance</h4><p>Assets meeting Full Gen AI criteria are surfaced with actioned state &mdash; leadership sees what's been greenlit and what's pending decision in one view.</p></div>
+      <div class="feature-card"><h4>Zero New Data Entry</h4><p>Every metric derives from existing Google Sheets and Supabase sources. No new manual workflows, no additional data burden on creators or producers.</p></div>
+    </div>
+  </section>
+
+  <!-- STAKEHOLDERS -->
+  <section id="users">
+    <h2>Stakeholders &amp; User Stories</h2>
+    <table>
+      <thead><tr><th>Role</th><th>Core Need</th><th>User Story</th><th>Primary Surfaces</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>VP / Head of Editorial</strong></td>
+          <td>Weekly pipeline health in &lt; 60s</td>
+          <td><em>"I need to know within 10 seconds which POD is underperforming so I can intervene before the week closes."</em></td>
+          <td>Overview (new), POD Wise</td>
+        </tr>
+        <tr>
+          <td><strong>POD Lead / Cluster Lead</strong></td>
+          <td>Self-service throughput benchmark</td>
+          <td><em>"I want to see my POD's rank against others and drill into which writers are behind allocation &mdash; without asking anyone."</em></td>
+          <td>Editorial (This Week), Overview (new)</td>
+        </tr>
+        <tr>
+          <td><strong>ACD</strong></td>
+          <td>Production accountability</td>
+          <td><em>"I need my output visible and ranked so I can track my own velocity against peers."</em></td>
+          <td>Production, Overview (new)</td>
+        </tr>
+        <tr>
+          <td><strong>Analytics / Strategy</strong></td>
+          <td>Scale-readiness signal</td>
+          <td><em>"I need to see which assets cleared the Gen AI threshold this week and whether the POD lead has actioned them."</em></td>
+          <td>Analytics, Overview (new)</td>
+        </tr>
+        <tr>
+          <td><strong>Producer / PM</strong></td>
+          <td>Pipeline velocity tracking</td>
+          <td><em>"I need to confirm that committed beats are converting to fresh takes at the rate we planned."</em></td>
+          <td>Planner, Editorial</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr />
+  <h2 style="margin-top:0; color: var(--terracotta); border-bottom-color: var(--terra-light);">NEW CAPABILITIES</h2>
+
+  <!-- OVERVIEW TAB -->
+  <section id="feat-overview-tab">
+    <h2>1. Content Ops Command Center (Overview Tab) <span class="badge badge-new">New</span></h2>
+    <p>A single-pane-of-glass that mirrors every other tab at a summary level &mdash; giving leadership the full pipeline picture in one scroll. Four subsections map to the four operational questions: <em>Are we committing enough beats? Are writers delivering? Is production keeping pace? Are ads performing?</em></p>
+    <div class="callout callout-info">
+      <div class="callout-icon">&#9670;</div>
+      <div><strong>Strategic rationale:</strong> The Overview tab is a <em>read-only intelligence layer</em> that pulls the most critical signals from Editorial, Production, and Analytics into a unified weekly view. All editing and drill-downs remain in their respective source tabs. Week selector defaults to last completed week.</div>
+    </div>
+
+    <!-- SUBSECTION 1: BEATS -->
+    <div class="card">
+      <div class="card-title">Subsection 1: Beats <span class="badge badge-new">New</span></div>
+      <h4>Business Question</h4>
+      <p><em>Are we making enough assets to cover the committed beat plan &mdash; and where are the gaps?</em></p>
+      <h4>Metrics</h4>
+      <table>
+        <thead><tr><th>Metric</th><th>Definition</th><th>Display</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Beats to be made</strong></td><td>Total beats committed/planned for the selected week across all PODs</td><td>Large hero number</td></tr>
+          <tr><td><strong>Beats made</strong></td><td>Beats where &ge;1 fresh take reached Ready for Prod or beyond</td><td>Large hero number</td></tr>
+          <tr><td><strong>Assets made</strong></td><td>Total assets (fresh takes) produced against committed beats</td><td>Large hero number</td></tr>
+          <tr><td><strong style="color:var(--red)">Assets away from beats</strong></td><td>Gap: Beats committed minus assets made. Any shortfall.</td><td><strong style="color:var(--red)">Red highlight</strong> when &gt; 0</td></tr>
+        </tbody>
+      </table>
+      <h4>Experience Design</h4>
+      <ul>
+        <li>Four hero numbers in a row &mdash; beats to be made, beats made, assets made, and the gap number</li>
+        <li>The gap number (<strong>assets away from beats</strong>) renders in <strong style="color:var(--red)">red</strong> when there is any shortfall &mdash; an immediate visual signal that the pipeline is under-delivering</li>
+        <li>When gap = 0 or assets exceed beats, the number renders in <strong style="color:var(--green)">green</strong></li>
+      </ul>
+      <h4>Data Sources</h4>
+      <ul>
+        <li>Planner &rarr; committed beat set for the week (beats to be made)</li>
+        <li>Editorial writer-tracker &rarr; beats delivered + assets produced</li>
+        <li>Gap is computed client-side: <code>beatsToMake - assetsMade</code></li>
+      </ul>
+    </div>
+
+    <!-- SUBSECTION 2: WRITING -->
+    <div class="card">
+      <div class="card-title">Subsection 2: Writing <span class="badge badge-new">New</span></div>
+      <h4>Business Question</h4>
+      <p><em>How is each POD and writer performing across the full writing-to-live lifecycle this week?</em></p>
+      <h4>View Hierarchy</h4>
+      <ul>
+        <li><strong>POD-level rows</strong> &mdash; one row per POD, showing aggregate numbers. Each row is <strong>collapsible</strong>.</li>
+        <li><strong>Writer-level rows</strong> (inside collapsed POD) &mdash; individual writer throughput for the last week</li>
+      </ul>
+      <h4>Columns (per writer / per POD aggregate)</h4>
+      <table>
+        <thead><tr><th>Column</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Beats Delivered</strong></td><td>Number of beats where the writer delivered &ge;1 fresh take to Ready for Prod or beyond</td></tr>
+          <tr><td><strong>Submitted for Production</strong></td><td>Fresh takes that moved to "Moving to Prod" or "Ready for Prod" stage</td></tr>
+          <tr><td><strong>Produced</strong></td><td>Assets that completed production (have production output logged)</td></tr>
+          <tr><td><strong>Live Ads</strong></td><td>Assets that are live and being tested in analytics</td></tr>
+        </tbody>
+      </table>
+      <h4>Experience Design</h4>
+      <ul>
+        <li>POD rows show aggregate totals across all writers in the POD</li>
+        <li>Click to expand &rarr; reveals individual writer rows with the same four columns</li>
+        <li>Beats Delivered column is RAG-coded: <strong style="color:var(--green)">green</strong> = meets allocation, <strong style="color:var(--amber)">amber</strong> = 1 below, <strong style="color:var(--red)">red</strong> = 2+ below</li>
+        <li>Tracks the full writer lifecycle in one row: beat &rarr; submitted &rarr; produced &rarr; live</li>
+      </ul>
+      <h4>Data Sources</h4>
+      <ul>
+        <li><code>/api/dashboard/writer-tracker</code> &rarr; writer-level stage data grouped by POD</li>
+        <li><code>/api/dashboard/production</code> &rarr; produced count per asset/writer</li>
+        <li><code>/api/dashboard/analytics</code> &rarr; live ads count per asset</li>
+        <li>Writer Config (Supabase) &rarr; allocation per writer, POD grouping</li>
+      </ul>
+      <h4>API Contract</h4>
+      <p><code>/api/dashboard/overview-tab?week={weekKey}</code></p>
+      <pre>{
+  weekKey, weekLabel,
+  pods: [
+    {
+      podLead: string,
+      beatsDelivered: number,
+      submittedForProd: number,
+      produced: number,
+      liveAds: number,
+      writers: [
+        {
+          name: string,
+          beatsDelivered: number,
+          submittedForProd: number,
+          produced: number,
+          liveAds: number,
+          allocation: number,
+          gap: number
+        }
+      ]
+    }
+  ]
+}</pre>
+    </div>
+
+    <!-- SUBSECTION 3: PRODUCTION -->
+    <div class="card">
+      <div class="card-title">Subsection 3: Production <span class="badge badge-new">New</span></div>
+      <h4>Business Question</h4>
+      <p><em>How much did each CD and ACD produce this week, and who is leading on output?</em></p>
+      <h4>View Hierarchy</h4>
+      <ul>
+        <li><strong>CD-level rows</strong> &mdash; one row per CD (Creative Director), showing aggregate production. Each row is <strong>collapsible</strong>.</li>
+        <li><strong>ACD-level rows</strong> (inside collapsed CD) &mdash; individual ACD production numbers</li>
+      </ul>
+      <h4>Columns</h4>
+      <table>
+        <thead><tr><th>Column</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Minutes Produced</strong></td><td>Total production minutes delivered in the selected week</td></tr>
+          <tr><td><strong>Images Produced</strong></td><td>Total image units delivered in the selected week</td></tr>
+          <tr><td><strong>Rank</strong></td><td>Position based on minutes produced (descending)</td></tr>
+        </tbody>
+      </table>
+      <h4>Experience Design</h4>
+      <ul>
+        <li>CD rows show team-level aggregates, <strong>ranked by total minutes produced</strong> (primary sort)</li>
+        <li>Click to expand &rarr; reveals individual ACD rows within that CD's team</li>
+        <li>Images produced shown alongside minutes as a secondary throughput signal</li>
+        <li>Deep link to full Production tab with same period pre-selected</li>
+      </ul>
+      <h4>Data Sources</h4>
+      <p>Reuses <code>/api/dashboard/production?period=last</code> &mdash; aggregate by CD, then ACD. Sorted by minutes produced. No new API endpoint required.</p>
+    </div>
+
+    <!-- SUBSECTION 4: PERFORMANCE OF GA CODES -->
+    <div class="card">
+      <div class="card-title">Subsection 4: Performance of GA Codes <span class="badge badge-new">New</span></div>
+      <h4>Business Question</h4>
+      <p><em>How are tested assets performing, and which ones are ready for full Gen AI scale production?</em></p>
+      <h4>RAG Classification</h4>
+      <table>
+        <thead><tr><th>Row Colour</th><th>Classification</th><th>Criteria</th><th>Gen AI Signal</th></tr></thead>
+        <tbody>
+          <tr><td style="background:#f0fdf4;padding:6px 14px"><strong style="color:var(--green)">Green</strong></td><td>Gen AI &mdash; Scale</td><td>Spend &ge;$100, CPI &lt;$10, &le;2 benchmark misses</td><td><strong style="color:var(--green)">Ready for Gen AI</strong></td></tr>
+          <tr><td style="background:#fffbeb;padding:6px 14px"><strong style="color:var(--amber)">Amber</strong></td><td>P1 / P2 Rework</td><td>Spend &ge;$100, fails Gen AI criteria</td><td>Not ready &mdash; rework needed</td></tr>
+          <tr><td style="background:#fef2f2;padding:6px 14px"><strong style="color:var(--red)">Red</strong></td><td>Testing / Drop</td><td>Spend &lt;$100 or severe underperformance</td><td>Not ready &mdash; drop or extend test</td></tr>
+        </tbody>
+      </table>
+      <h4>Columns</h4>
+      <ul>
+        <li><strong>Asset name / code</strong></li>
+        <li><strong>CPI</strong> &mdash; cost per install</li>
+        <li><strong>Spend</strong> &mdash; total ad spend</li>
+        <li><strong>CTI</strong> &mdash; click-to-install rate</li>
+        <li><strong>Status</strong> &mdash; Gen AI / P1 Rework / P2 Rework / Drop (RAG badge)</li>
+        <li><strong>Gen AI Ready</strong> &mdash; explicit flag column: checkmark for assets that clear the Gen AI threshold, signalling they can move to full-scale generation</li>
+      </ul>
+      <h4>Experience Design</h4>
+      <ul>
+        <li>Each row's <strong>background colour</strong> is RAG-coded: green for Gen AI, amber for rework, red for drop &mdash; instant visual scan of portfolio health</li>
+        <li>The "Gen AI Ready" column serves as the <strong>scale-decision signal</strong> &mdash; leadership can see at a glance how many assets are cleared for full generation</li>
+        <li>Mirrors the Analytics tab classification logic but presented as a compact summary view</li>
+        <li>Deep link to full Analytics tab for metric drill-down</li>
+      </ul>
+      <h4>Data Sources</h4>
+      <ul>
+        <li><code>/api/dashboard/analytics?week={weekKey}</code> &rarr; asset performance data with classification tones</li>
+        <li>Supabase bucket <code>analytics/actioned-state.json</code> &rarr; actioned flags</li>
+      </ul>
+    </div>
+
+    <h3>Navigation Placement</h3>
+    <p>The Overview tab appears as the <strong>first item in the sidebar</strong>, above the Editorial Funnel group. It is the default landing view &mdash; leadership opens the dashboard and immediately sees the intelligence layer. Sidebar label: <strong>Overview</strong>.</p>
+  </section>
+
+  <!-- EDITORIAL ENHANCEMENT -->
+  <section id="feat-editorial-enhance">
+    <h2>2. Editorial Velocity Engine &mdash; POD-level Throughput <span class="badge badge-enhance">Enhancement</span></h2>
+    <p>Transforms the Editorial Funnel from a writer-level tracking tool into a <strong>competitive intelligence surface for editorial leadership</strong>. Adds a POD-level throughput leaderboard that answers the question every editorial lead asks: <em>which POD is outperforming, and who needs intervention?</em></p>
+    <div class="callout callout-warn">
+      <div class="callout-icon">&#9888;</div>
+      <div><strong>Scope note:</strong> This is an additive enhancement to existing Editorial sub-views. All existing writer-level detail is preserved. The POD-level leaderboard is injected as the first section in "Overview" and "Last Week" sub-views &mdash; giving leadership the macro signal before the micro detail.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">POD Throughput Leaderboard <span class="badge badge-enhance">Enhancement &mdash; Editorial Overview + Last Week</span></div>
+      <h4>Business Question</h4>
+      <p><em>Which POD has the highest creative throughput this week, and how does each POD's conversion rate compare?</em></p>
+      <h4>Throughput Metric</h4>
+      <ul>
+        <li><strong>Beats committed</strong> &mdash; total beats the POD was assigned for the week (the denominator of pipeline efficiency)</li>
+        <li><strong>Beats delivered</strong> &mdash; beats where &ge;1 fresh take reached Ready for Prod or beyond by week end</li>
+        <li><strong>Throughput %</strong> = Beats delivered / Beats committed &times; 100 (the single number that defines POD velocity)</li>
+        <li><strong>Rank</strong> &mdash; sorted descending by Throughput %, ties broken by absolute count delivered</li>
+      </ul>
+      <h4>Experience Design &mdash; Leaderboard</h4>
+      <ul>
+        <li>Ranked card row for each POD: rank badge (gold/silver/bronze for top 3), POD lead name, Throughput %, mini progress bar (delivered vs. committed), absolute numbers</li>
+        <li>Click-through &rarr; scrolls to writer-level detail for that POD in "This Week" sub-view (seamless drill-down)</li>
+        <li>Responsive: stacks to vertical list on mobile</li>
+      </ul>
+      <h4>POD Summary Card Metrics</h4>
+      <ul>
+        <li>Beats committed this week</li>
+        <li>Beats delivered (reached Ready for Prod)</li>
+        <li>Throughput % &mdash; large, colour-coded: <strong style="color:var(--green)">green &ge;80%</strong>, <strong style="color:var(--amber)">amber 60&ndash;79%</strong>, <strong style="color:var(--red)">red &lt;60%</strong></li>
+        <li>Writers in POD (team size context)</li>
+        <li>Average output per writer (talent efficiency signal)</li>
+      </ul>
+      <h4>Writer-level Enhancements</h4>
+      <ul>
+        <li>POD throughput summary header above each POD's writer group in "This Week"</li>
+        <li>POD rank badge next to POD lead name</li>
+        <li>"Top performer" highlight (most delivered) per POD with a subtle accent &mdash; recognizes high-velocity contributors</li>
+      </ul>
+      <h4>Data Sources</h4>
+      <ul>
+        <li>Existing <code>/api/dashboard/writer-tracker</code> &mdash; writer-level stage data grouped by POD</li>
+        <li>Existing <code>/api/dashboard/overview?period=last|current</code> &mdash; beat counts and stage distributions</li>
+        <li>Add <code>pods[]</code> with pre-computed throughput + rank to writer-tracker API response</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+  <h2 style="margin-top:0; color: var(--forest); border-bottom-color: var(--terra-light);">CURRENT CAPABILITIES</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:0">Platform capabilities documented as a baseline. Maturity assessment reflects operational stability, not feature completeness.</p>
+
+  <!-- EDITORIAL FUNNEL -->
+  <section id="exist-editorial">
+    <h2>Editorial Funnel <span class="badge badge-stable">Stable</span></h2>
+    <p>The heartbeat of content velocity tracking &mdash; monitors the weekly scripting pipeline from beat commitment through production handoff. Four sub-views map to the editorial cadence: look back, act now, plan ahead.</p>
+    <h4>Overview (End-to-end beat lifecycle)</h4>
+    <ul>
+      <li>Week dropdown selector</li>
+      <li>Table: Beat name, Contributors, Scripting days, Production days, Pass / Fail outcome</li>
+      <li>Data: <code>/api/dashboard/beat-overview?week={weekKey}</code></li>
+    </ul>
+    <h4>Last Week (Performance signal)</h4>
+    <ul>
+      <li><span class="metric-pill">Fresh takes released</span> <span class="metric-pill">Production TAT</span> <span class="metric-pill">Hit rate</span></li>
+      <li>Beats funnel table: Show, Beat, Attempts, Successful</li>
+      <li>Toggle to include new-shows POD</li>
+      <li>Data: <code>/api/dashboard/overview?period=last</code></li>
+    </ul>
+    <h4>This Week (Real-time creative throughput)</h4>
+    <ul>
+      <li>Planning health bar &mdash; committed beats vs. target, colour shifts by day of week (early warning system)</li>
+      <li>Writer delivery tracker &mdash; by POD, then writer; columns: Allocated, This Week, Gap, Spillovers, Flagged</li>
+      <li>Expandable writer rows showing beat-level stage badges</li>
+      <li>Stage pipeline summary counts (Writing &rarr; Pending Review &rarr; Reviewed &rarr; Moving to Prod &rarr; Ready for Prod)</li>
+      <li>Data: <code>/api/dashboard/writer-tracker</code></li>
+    </ul>
+    <h4>Next Week (Pipeline readiness)</h4>
+    <ul>
+      <li>Same metrics as Last Week but sourced from Planner committed snapshot</li>
+      <li>Merges planner snapshot + <code>/api/dashboard/overview?period=next</code></li>
+    </ul>
+  </section>
+
+  <section id="exist-pod-wise">
+    <h2>POD Wise <span class="badge badge-stable">Stable</span></h2>
+    <p>Competitive benchmarking across PODs &mdash; the leaderboard that drives accountability. Toggle between Performance (output and hit rate) and Tasks (review backlog). Filter by week for trending.</p>
+    <h4>Performance view</h4>
+    <ul>
+      <li>4 summary cards: Total beats, Total scripts, Successful scripts, Avg conversion %</li>
+      <li>POD ranking by script hit rate with horizontal bar charts (beats / scripts / successful)</li>
+      <li>Period toggle: Lifetime / Week (last, this, next)</li>
+      <li>Data: <code>/api/dashboard/competition?period={podWiseWeek}</code></li>
+    </ul>
+    <h4>Tasks view</h4>
+    <ul>
+      <li>2 summary cards: Scripts to review, Beats to review</li>
+      <li>Bar charts: Scripts pending approval per POD; Beats pending approval per POD</li>
+      <li>Data: <code>/api/dashboard/pod-tasks?period={podWiseWeek}</code></li>
+    </ul>
+  </section>
+
+  <section id="exist-planner">
+    <h2>Planner <span class="badge badge-launched">Launched</span></h2>
+    <p>The resource allocation engine &mdash; an interactive Gantt board for week-level scripting planning that drives the commitment numbers every downstream metric depends on.</p>
+    <div class="feature-grid">
+      <div class="feature-card"><h4>Brush-paint Gantt board</h4><p>Click-drag to paint beats/stages across days and writers. Stage pipeline: Writing &rarr; Pending Review &rarr; Reviewed &rarr; Ready for Prod.</p></div>
+      <div class="feature-card"><h4>Roster manager</h4><p>Add/remove/archive writers per POD, move writers between PODs, edit names and roles. Talent utilization starts here.</p></div>
+      <div class="feature-card"><h4>Beat management</h4><p>Add beats to writers, fetch beat docs from Google Sheets, remove beats, beat picker search.</p></div>
+      <div class="feature-card"><h4>Week navigation &amp; commit</h4><p>Navigate previous/next weeks. Commit "next week" snapshot which drives Editorial Next Week metrics.</p></div>
+      <div class="feature-card"><h4>Persistence</h4><p>Auto-saves to Supabase bucket (weeks/{weekKey}.json). Edit mode locking with auth.</p></div>
+      <div class="feature-card"><h4>Share</h4><p>Copy planner as image to clipboard. Share link with snapshot for async review.</p></div>
+    </div>
+  </section>
+
+  <section id="exist-analytics">
+    <h2>Analytics <span class="badge badge-needs-work">Needs Enhancement</span></h2>
+    <p>The scale-decision engine &mdash; classifies each tested asset into a next-step category based on spend, CPI, and engagement benchmarks. Currently delivers strong signal but lacks leadership-layer surfacing (addressed by Overview Tab).</p>
+    <h4>Classification Framework</h4>
+    <table>
+      <thead><tr><th>Classification</th><th>Label</th><th>Criteria</th><th>Action Signal</th></tr></thead>
+      <tbody>
+        <tr><td style="color:var(--green);font-weight:700">Gen AI</td><td>Full Gen AI &mdash; Scale</td><td>Spend &ge;$100, CPI &lt;$10, &le;2 benchmark misses</td><td>Greenlight for full-scale production</td></tr>
+        <tr><td style="color:var(--amber);font-weight:700">P1 Rework</td><td>Priority Rework</td><td>Spend &ge;$100, fails Gen AI, CTI &ge;12%</td><td>High-signal content worth iterating</td></tr>
+        <tr><td style="color:var(--terracotta);font-weight:700">P2 Rework</td><td>Secondary Rework</td><td>Spend &ge;$100, fails Gen AI, CTI &lt;12%</td><td>Lower signal, rework if capacity allows</td></tr>
+        <tr><td style="color:var(--red);font-weight:700">Testing/Drop</td><td>Drop or extend test</td><td>Spend &lt;$100</td><td>Insufficient data or underperforming</td></tr>
+      </tbody>
+    </table>
+    <h4>Capabilities</h4>
+    <ul>
+      <li>Analytics table with dynamic metric columns (CPI, Spend, CPM, 3-sec plays, Q1&ndash;Q4 completion, CTI)</li>
+      <li>Toggles: Show only promising (Gen AI + P1), Show actioned items, Show Q2/Q3/Q4 metrics</li>
+      <li>Actioned checkbox &mdash; shared state via Supabase, requires edit access</li>
+      <li>Week selector dropdown</li>
+      <li>Data: <code>/api/dashboard/analytics?week={weekKey}</code></li>
+    </ul>
+  </section>
+
+  <section id="exist-production">
+    <h2>Production <span class="badge badge-stable">Stable</span></h2>
+    <p>Production throughput intelligence &mdash; ACD productivity tracking sourced from the Live tab via a manual sync trigger. Measures the middle of the pipeline: how fast content moves from script to produced asset.</p>
+    <ul>
+      <li>ACD Daily Sync &mdash; manual "Run sync" button; last sync time, row count, status</li>
+      <li>Stacked bar chart (Recharts): ACD or CD view, time windows Rolling 7D / 14D / 30D</li>
+      <li>Adherence issues table: ACD sync rule compliance, failure reasons, fix suggestions</li>
+      <li>Troubleshooting summary: failed sheets count, CDs affected, failure reason pills</li>
+      <li>Data: <code>/api/dashboard/production</code> + Supabase <code>acd_productivity</code> &amp; <code>acd_live_sync_rows</code></li>
+    </ul>
+  </section>
+
+  <section id="exist-details">
+    <h2>Details <span class="badge badge-launched">Launched</span></h2>
+    <p>Configuration and documentation layer &mdash; the operational reference that ensures everyone understands how metrics are calculated and who is being tracked.</p>
+    <ul>
+      <li>Teams currently tracked &mdash; CD + ACD name grid derived from sync data</li>
+      <li>Analytics legend &mdash; colour swatches + labels for 4 classification tones</li>
+      <li>Next step classification logic &mdash; full documentation of Gen AI, P1, P2, Testing/Drop rules with benchmark thresholds</li>
+      <li>Actioned state note &mdash; explains shared checkbox behaviour and edit access requirement</li>
+    </ul>
+  </section>
+
+  <hr />
+
+  <!-- DELIVERY PHASES -->
+  <section id="delivery-phases">
+    <h2>Delivery Phases</h2>
+
+    <div class="card">
+      <h3 style="margin-top:0">Phase 1 &mdash; Command Center Core <span class="badge badge-p1">P1</span></h3>
+      <p style="color:var(--muted);font-size:13px">Sprint 1 &bull; Estimated: 3&ndash;4 days</p>
+      <div class="priority-row">
+        <div class="priority-num">1</div>
+        <div class="priority-content">
+          <h4>Overview Tab &mdash; Fresh Takes on Approved Beats</h4>
+          <p>Core leadership ask. New API endpoint aggregating Editorial + Beat approval data. Backend: ~1&ndash;2 days. UI composition: ~1 day. Highest-impact deliverable.</p>
+        </div>
+      </div>
+      <div class="priority-row">
+        <div class="priority-num">2</div>
+        <div class="priority-content">
+          <h4>Overview Tab &mdash; Assets Moved to Full Gen AI</h4>
+          <p>Reuses Analytics API with actioned filter. Low backend effort &mdash; mostly UI composition on existing data. ~0.5 day. Completes the scale-readiness signal.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Phase 2 &mdash; Velocity &amp; Benchmarking <span class="badge badge-p2">P2</span></h3>
+      <p style="color:var(--muted);font-size:13px">Sprint 2 &bull; Estimated: 2&ndash;3 days</p>
+      <div class="priority-row">
+        <div class="priority-num">3</div>
+        <div class="priority-content">
+          <h4>Editorial &mdash; POD Throughput Leaderboard</h4>
+          <p>Aggregation of existing writer-tracker data at POD level. Add <code>pods[]</code> to API response. Backend: ~1 day. UI: ~0.5 day. Unlocks self-service benchmarking.</p>
+        </div>
+      </div>
+      <div class="priority-row">
+        <div class="priority-num">4</div>
+        <div class="priority-content">
+          <h4>Overview Tab &mdash; ACD Throughput (ranked)</h4>
+          <p>Reuses existing Production API. UI adaptation of existing chart as ranked leaderboard. ~0.5 day. Completes the Command Center trifecta.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Phase 3 &mdash; Polish &amp; Recognition <span class="badge badge-p3">P3</span></h3>
+      <p style="color:var(--muted);font-size:13px">Sprint 3 &bull; Estimated: 0.5&ndash;1 day</p>
+      <div class="priority-row">
+        <div class="priority-num">5</div>
+        <div class="priority-content">
+          <h4>Editorial &mdash; Writer-level Top Performer Highlight</h4>
+          <p>Polish enhancement. Subtle accent on the highest-output writer per POD. ~0.5 day. Drives recognition and healthy competition.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RISKS & DEPENDENCIES -->
+  <section id="risks">
+    <h2>Risks &amp; Dependencies</h2>
+    <table>
+      <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>"Approved beat" definition is ambiguous</strong> &mdash; different stakeholders may define the committed beat set differently (Ready for Production vs. Ideation commits)</td>
+          <td><span class="badge badge-p1">High</span></td>
+          <td>Resolve with Editorial Lead before Phase 1 build begins. Document definition in Details tab.</td>
+        </tr>
+        <tr>
+          <td><strong>Actioned state adoption</strong> &mdash; Gen AI scale numbers are only meaningful if POD leads consistently mark assets as actioned</td>
+          <td><span class="badge badge-p2">Medium</span></td>
+          <td>Surface "pending decision" count prominently to create social pressure for timely actioning. Track actioned latency as a secondary metric.</td>
+        </tr>
+        <tr>
+          <td><strong>ACD throughput unit ambiguity</strong> &mdash; "production output" could mean minutes, image count, or a composite</td>
+          <td><span class="badge badge-p2">Medium</span></td>
+          <td>Align with Production Lead on unit before Phase 2. Default to existing production metric unit.</td>
+        </tr>
+        <tr>
+          <td><strong>Google Sheets API rate limits</strong> &mdash; Overview Tab adds incremental API calls on every load</td>
+          <td><span class="badge badge-p3">Low</span></td>
+          <td>Overview Tab reuses cached data from existing endpoints. No net-new Sheets calls at initial load.</td>
+        </tr>
+        <tr>
+          <td><strong>Week selector scope creep</strong> &mdash; Overview Tab week selector could diverge from tab-level selectors, confusing users</td>
+          <td><span class="badge badge-p3">Low</span></td>
+          <td>Keep Overview Tab's week selector independent initially. Evaluate global week context in a future iteration.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- OPEN QUESTIONS -->
+  <section id="open-questions">
+    <h2>Open Questions</h2>
+    <table>
+      <thead><tr><th>#</th><th>Question</th><th>Decision Owner</th><th>Impact on Delivery</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>What exactly defines an "approved beat set"? Ready for Production tab, Ideation commits, or both?</td><td>Editorial Lead</td><td><span class="badge badge-p1">Blocks P1</span> &mdash; changes the numerator of the primary Overview metric</td></tr>
+        <tr><td>2</td><td>Should "Moved to Full Gen AI" count only actioned=true assets, or all Gen AI eligible?</td><td>Analytics / Strategy</td><td>Medium &mdash; changes the hero number and narrative framing</td></tr>
+        <tr><td>3</td><td>POD throughput: should PODs with 0 delivered appear in the leaderboard, or only PODs with &ge;1 delivery?</td><td>Editorial Lead</td><td>Low &mdash; display preference, zero data impact</td></tr>
+        <tr><td>4</td><td>ACD throughput unit: production minutes vs. image count vs. composite?</td><td>Production Lead</td><td>Medium &mdash; determines what "throughput" means for Production in the Overview Tab</td></tr>
+        <tr><td>5</td><td>Should the Overview tab have its own week selector, or share a global week context across all tabs?</td><td>PM / Engineering</td><td>Low &mdash; UX preference, no data model impact</td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-success">
+      <div class="callout-icon">&#10003;</div>
+      <div><strong>Deployment safety:</strong> All new capabilities are additive and non-breaking. Existing tab behaviour and APIs remain unchanged. The Content Ops Command Center can be shipped independently of the Editorial Velocity Engine &mdash; each phase delivers standalone value.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+  const links = document.querySelectorAll('nav a');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector('nav a[href="#' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

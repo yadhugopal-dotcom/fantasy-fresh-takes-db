@@ -1,86 +1,61 @@
 import { NextResponse } from "next/server";
 import {
-  fetchEditorialScriptStatusRows,
-  fetchIdeationTabRows,
-  parseLiveDate,
-  normalizeIdeationWeekLabel,
-  getIdeationWeekBucket,
+  POD_LEAD_ORDER,
+  fetchEditorialTabRows,
 } from "../../../../lib/live-tab.js";
-import { getWeekSelection, shiftYmd } from "../../../../lib/week-view.js";
+import { formatWeekRangeLabel, getWeekSelection, normalizeWeekView } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
 
 function normalizeKey(value) {
-  return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+  return String(value || "").trim().toLowerCase();
 }
 
-export async function GET() {
+export async function GET(request) {
+  const period = normalizeWeekView(new URL(request.url).searchParams.get("period") || "next");
+
   try {
-    const [{ rows: editorialRows }, { rows: ideationRows }] = await Promise.all([
-      fetchEditorialScriptStatusRows(),
-      fetchIdeationTabRows(),
-    ]);
+    const { rows: editorialRows } = await fetchEditorialTabRows();
+    const selectedWeek = getWeekSelection(period);
 
-    // 1. Scripts pending approval per POD
-    //    Column C = podLeadName, Column N = scriptStatus
-    //    Count rows where scriptStatus = "Completed by writer"
-    const scriptsPending = new Map();
-    for (const row of editorialRows) {
-      const status = normalizeKey(row.scriptStatus);
-      if (status !== "completed by writer") continue;
-      const podLead = row.podLeadName || "";
-      if (!podLead) continue;
-      scriptsPending.set(podLead, (scriptsPending.get(podLead) || 0) + 1);
-    }
+    const pods = POD_LEAD_ORDER.map((podName) => {
+      const podKey = normalizeKey(podName);
+      const podRows = (editorialRows || []).filter(
+        (row) => normalizeKey(row.podLeadName) === podKey
+      );
 
-    const scriptsPendingByPod = Array.from(scriptsPending.entries())
-      .map(([podLead, count]) => ({ podLead, count }))
-      .sort((a, b) => b.count - a.count);
+      // Beats pending vs approved for selected week
+      const selectedWeekRows = podRows.filter((row) => {
+        const date = row.submittedDate || "";
+        return date >= selectedWeek.weekStart && date <= selectedWeek.weekEnd;
+      });
+      const approvedBeats = selectedWeekRows.filter(
+        (row) => normalizeKey(row.status) === "approved for production by cl"
+      ).length;
+      const pendingBeats = selectedWeekRows.length - approvedBeats;
 
-    // 2. Beats pending approval per POD (current week)
-    //    Count ideation rows from current week with status "review pending" or "iterate"
-    const weekSelection = getWeekSelection("current");
-    const targetStart = weekSelection.weekStart;
-    const targetEnd = shiftYmd(weekSelection.weekStart, 6);
-    const bucketLabel = getIdeationWeekBucket(weekSelection);
+      // Scripts to review (status = "Completed by writer")
+      const scriptsToReview = podRows.filter(
+        (row) => normalizeKey(row.status) === "completed by writer"
+      ).length;
 
-    const beatsPending = new Map();
-    for (const row of ideationRows) {
-      const status = normalizeKey(row.status);
-      if (!status) continue;
-
-      const isReviewPending = status.includes("review") && status.includes("pend");
-      const isIterate = status === "iterate" || status.includes("iteration");
-      if (!isReviewPending && !isIterate) continue;
-
-      // Match by date range or week label
-      const rawDate = row.beatsAssignedDate || "";
-      const parsedDate = parseLiveDate(rawDate);
-      const weekLabel = normalizeIdeationWeekLabel(rawDate);
-      const normalizedBucket = normalizeIdeationWeekLabel(bucketLabel);
-
-      const dateInRange = parsedDate && parsedDate >= targetStart && parsedDate <= targetEnd;
-      const weekLabelMatch = weekLabel && weekLabel === normalizedBucket;
-
-      if (!dateInRange && !weekLabelMatch) continue;
-
-      const podLead = row.podLeadName || "";
-      if (!podLead) continue;
-      beatsPending.set(podLead, (beatsPending.get(podLead) || 0) + 1);
-    }
-
-    const beatsPendingByPod = Array.from(beatsPending.entries())
-      .map(([podLead, count]) => ({ podLead, count }))
-      .sort((a, b) => b.count - a.count);
+      return {
+        podLeadName: podName,
+        pendingBeats,
+        approvedBeats,
+        scriptsToReview,
+      };
+    });
 
     return NextResponse.json({
       ok: true,
-      scriptsPendingByPod,
-      beatsPendingByPod,
-      totalScriptsPending: scriptsPendingByPod.reduce((s, r) => s + r.count, 0),
-      totalBeatsPending: beatsPendingByPod.reduce((s, r) => s + r.count, 0),
+      period,
+      weekKey: selectedWeek.weekKey,
+      weekStart: selectedWeek.weekStart,
+      weekEnd: selectedWeek.weekEnd,
+      weekLabel: formatWeekRangeLabel(selectedWeek.weekStart, selectedWeek.weekEnd),
+      pods,
     });
   } catch (error) {
     return NextResponse.json(
