@@ -1515,6 +1515,34 @@ select {
   text-align: right;
 }
 
+.overview-genai-success-row {
+  background: color-mix(in srgb, var(--green-bg) 72%, transparent);
+}
+
+.overview-guidelines-card {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--green-bg) 36%, var(--card) 64%);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.overview-guidelines-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.overview-guidelines-line {
+  font-size: 13px;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+}
+
 .analytics-table {
   --analytics-header-group-row-height: 40px;
   min-width: 1880px;

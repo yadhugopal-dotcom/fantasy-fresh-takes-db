@@ -628,7 +628,10 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             <tbody>
               {fullGenAiByBeat.length > 0 ? (
                 fullGenAiByBeat.map((row) => (
-                  <tr key={`${row.showName}-${row.beatName}`}>
+                  <tr
+                    key={`${row.showName}-${row.beatName}`}
+                    className={row.successCount > 0 ? "overview-genai-success-row" : ""}
+                  >
                     <td>{row.showName || "-"}</td>
                     <td>{row.beatName || "-"}</td>
                     <td>{formatMetricValue(row.attempts)}</td>
@@ -643,6 +646,17 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
               )}
             </tbody>
           </table>
+        </div>
+        <div className="overview-guidelines-card">
+          <div className="overview-guidelines-title">Success definition and guidelines</div>
+          <div className="overview-guidelines-line">
+            Success means the beat has at least one successful Full Gen AI outcome in the selected date range.
+          </div>
+          <div className="overview-guidelines-line">Hit rate = (Success / Attempts) x 100.</div>
+          <div className="overview-guidelines-line">Rows shaded light green have one or more successful outcomes.</div>
+          <div className="overview-guidelines-line">
+            Beats with zero success in the selected range stay unshaded and should be reviewed for iteration.
+          </div>
         </div>
       </section>
 
