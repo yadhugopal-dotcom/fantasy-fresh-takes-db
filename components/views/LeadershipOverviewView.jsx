@@ -272,6 +272,9 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       })
       .sort((a, b) => b.totalMinutes - a.totalMinutes || a.cdName.localeCompare(b.cdName));
   }, [scopedWorkflowRows, section3AssetTypes]);
+  const allCdsExpanded =
+    throughputByCd.length > 0 &&
+    throughputByCd.every((row) => Boolean(expandedCds[row.cdName]));
 
   const fullGenAiByBeat = useMemo(() =>
     Array.from(
@@ -494,6 +497,19 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                 Hold Shift (or Cmd/Ctrl) to multi-select
               </span>
             </label>
+            <button
+              type="button"
+              className="ghost-button overview-section-link"
+              onClick={() =>
+                setExpandedCds(
+                  allCdsExpanded
+                    ? {}
+                    : Object.fromEntries(throughputByCd.map((row) => [row.cdName, true]))
+                )
+              }
+            >
+              {allCdsExpanded ? "Collapse all pods" : "Open POD Wise"}
+            </button>
           </div>
         </div>
         <div className="panel-card overview-panel-card">
