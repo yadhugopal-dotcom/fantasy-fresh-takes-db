@@ -728,6 +728,27 @@ select {
   box-shadow: 0 8px 20px -14px rgba(28, 25, 23, 0.2);
 }
 
+.overview-link-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.overview-link-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 24px -16px rgba(28, 25, 23, 0.24);
+}
+
+.overview-card-delta {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.overview-section-link:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+
 .pod-summary-card {
   min-height: 154px;
 }

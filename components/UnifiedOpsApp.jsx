@@ -1261,7 +1261,6 @@ function OverviewContent({
   const overviewLoading = Boolean(overviewLoadingByPeriod[period]);
   const overviewError = overviewErrorByPeriod[period] || "";
   const notes = buildOverviewNotes({ overviewError, overviewData });
-
   const sectionTitle = period === "current" ? "Editorial funnel" : period === "next" ? "Plan for next week" : "Output from last week";
   const contextLine = period === "current"
     ? "Where we are this week: planning and production status."
@@ -1296,6 +1295,446 @@ function OverviewContent({
         )}
       </div>
     </ShareablePanel>
+  );
+}
+
+function LeadershipOverviewContent({
+  leadershipOverviewDataByPeriod,
+  leadershipOverviewLoadingByPeriod,
+  leadershipOverviewErrorByPeriod,
+  onNavigate,
+}) {
+  const overviewData =
+    leadershipOverviewDataByPeriod?.current ||
+    leadershipOverviewDataByPeriod?.last ||
+    leadershipOverviewDataByPeriod?.next ||
+    null;
+  const overviewLoading = Boolean(
+    leadershipOverviewLoadingByPeriod?.current ||
+      leadershipOverviewLoadingByPeriod?.last ||
+      leadershipOverviewLoadingByPeriod?.next
+  );
+  const overviewError =
+    leadershipOverviewErrorByPeriod?.current ||
+    leadershipOverviewErrorByPeriod?.last ||
+    leadershipOverviewErrorByPeriod?.next ||
+    "";
+  const [selectedFilterId, setSelectedFilterId] = useState("");
+  const [outputMode, setOutputMode] = useState("pod");
+  const filterOptions = Array.isArray(overviewData?.filters) ? overviewData.filters : [];
+  const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
+  const workflowRows = Array.isArray(overviewData?.workflowRows) ? overviewData.workflowRows : [];
+  const approvedMatchedRows = Array.isArray(overviewData?.approvedMatchedRows) ? overviewData.approvedMatchedRows : [];
+  const fullGenAiRows = Array.isArray(overviewData?.fullGenAiRows) ? overviewData.fullGenAiRows : [];
+  const currentWeekUpdateRows = Array.isArray(overviewData?.currentWeekUpdateRows) ? overviewData.currentWeekUpdateRows : [];
+
+  useEffect(() => {
+    if (filterOptions.length === 0) {
+      return;
+    }
+    if (!selectedFilterId || !filterOptions.some((option) => option.id === selectedFilterId)) {
+      setSelectedFilterId(filterOptions[filterOptions.length - 1]?.id || "");
+    }
+  }, [filterOptions, selectedFilterId]);
+
+  const selectedFilterOption = filterOptions.find((option) => option.id === selectedFilterId) || filterOptions[filterOptions.length - 1];
+  const previousFilterOption = selectedFilterOption
+    ? filterOptions[Math.max(0, filterOptions.findIndex((option) => option.id === selectedFilterOption.id) - 1)]
+    : null;
+
+  const matchesSelectedFilter = (row, option) => {
+    if (!row || !option) {
+      return false;
+    }
+    return row.monthKey === option.monthKey && Number(row.weekInMonth || 0) === Number(option.weekInMonth || 0);
+  };
+
+  const scopedBeatRows = beatRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
+  const previousBeatRows =
+    previousFilterOption && previousFilterOption.id !== selectedFilterOption?.id
+      ? beatRows.filter((row) => matchesSelectedFilter(row, previousFilterOption))
+      : [];
+  const scopedWorkflowRows = workflowRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
+  const scopedApprovedMatchedRows = approvedMatchedRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
+  const scopedFullGenAiRows = fullGenAiRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
+  const selectedRangeLabel = selectedFilterOption ? getSelectedPeriodRangeLabel(selectedFilterOption, scopedBeatRows) : "";
+
+  const countByStatus = (rows, statusCategory) => rows.filter((row) => row.statusCategory === statusCategory).length;
+  const totalBeats = scopedBeatRows.length;
+  const approvedBeats = countByStatus(scopedBeatRows, "approved");
+  const reviewPendingBeats = countByStatus(scopedBeatRows, "review_pending");
+  const iterateBeats = countByStatus(scopedBeatRows, "iterate");
+  const abandonedBeats = countByStatus(scopedBeatRows, "abandoned");
+  const deliveredBeats = approvedBeats;
+
+  const deltaMetaFor = (currentValue, previousValue) => {
+    if (!previousFilterOption || previousFilterOption.id === selectedFilterOption?.id) {
+      return { text: "No previous week", color: "var(--subtle)" };
+    }
+    return getDeltaMeta(currentValue, previousValue, `vs ${previousFilterOption.label}`);
+  };
+
+  const totalBeatsDelta = deltaMetaFor(totalBeats, previousBeatRows.length);
+  const approvedBeatsDelta = deltaMetaFor(approvedBeats, countByStatus(previousBeatRows, "approved"));
+  const reviewPendingDelta = deltaMetaFor(reviewPendingBeats, countByStatus(previousBeatRows, "review_pending"));
+  const iterateDelta = deltaMetaFor(iterateBeats, countByStatus(previousBeatRows, "iterate"));
+  const abandonedDelta = deltaMetaFor(abandonedBeats, countByStatus(previousBeatRows, "abandoned"));
+  const deliveredDelta = deltaMetaFor(deliveredBeats, countByStatus(previousBeatRows, "approved"));
+
+  const buildOutputRows = () => {
+    const grouped = new Map();
+
+    const ensureRow = (podLeadName, writerName) => {
+      const safePod = normalizePodFilterKey(podLeadName || "Unassigned");
+      const safeWriter = normalizePodFilterKey(writerName || "Unassigned");
+      const key = outputMode === "pod" ? safePod : `${safePod}|${safeWriter}`;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          podLeadName: podLeadName || "Unassigned",
+          writerName: writerName || "Unassigned",
+          ideationCount: 0,
+          deliveredCount: 0,
+          editorialCount: 0,
+          readyForProductionCount: 0,
+          productionCount: 0,
+          liveCount: 0,
+        });
+      }
+
+      return grouped.get(key);
+    };
+
+    if (outputMode === "pod") {
+      for (const row of scopedBeatRows) {
+        ensureRow(row.podLeadName, "").ideationCount += 1;
+      }
+      for (const row of scopedApprovedMatchedRows) {
+        ensureRow(row.podLeadName, row.writerName).deliveredCount += 1;
+      }
+      for (const row of scopedWorkflowRows) {
+        const entry = ensureRow(row.podLeadName, row.writerName);
+        if (row.source === "editorial") entry.editorialCount += 1;
+        if (row.source === "ready_for_production") entry.readyForProductionCount += 1;
+        if (row.source === "production") entry.productionCount += 1;
+        if (row.source === "live") entry.liveCount += 1;
+      }
+    } else {
+      for (const row of scopedApprovedMatchedRows) {
+        const entry = ensureRow(row.podLeadName, row.writerName);
+        entry.ideationCount += 1;
+        entry.deliveredCount += 1;
+      }
+      for (const row of scopedWorkflowRows) {
+        const entry = ensureRow(row.podLeadName, row.writerName);
+        if (row.source === "editorial") entry.editorialCount += 1;
+        if (row.source === "ready_for_production") entry.readyForProductionCount += 1;
+        if (row.source === "production") entry.productionCount += 1;
+        if (row.source === "live") entry.liveCount += 1;
+      }
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => {
+      const totalA =
+        a.ideationCount + a.editorialCount + a.readyForProductionCount + a.productionCount + a.liveCount + a.deliveredCount;
+      const totalB =
+        b.ideationCount + b.editorialCount + b.readyForProductionCount + b.productionCount + b.liveCount + b.deliveredCount;
+      if (totalA !== totalB) return totalB - totalA;
+      if (a.podLeadName !== b.podLeadName) return a.podLeadName.localeCompare(b.podLeadName);
+      return a.writerName.localeCompare(b.writerName);
+    });
+  };
+
+  const outputRows = buildOutputRows();
+
+  const throughputByAcd = Array.from(
+    scopedWorkflowRows
+      .filter((row) => row.source === "production" || row.source === "live")
+      .reduce((map, row) => {
+        const acdNames = Array.isArray(row?.acdNames) && row.acdNames.length > 0 ? row.acdNames : ["Unassigned"];
+        for (const acdName of acdNames) {
+          const key = normalizePodFilterKey(acdName || "Unassigned");
+          if (!map.has(key)) {
+            map.set(key, {
+              acdName: acdName || "Unassigned",
+              productionAssets: new Set(),
+              liveAssets: new Set(),
+            });
+          }
+          const entry = map.get(key);
+          const assetCode = String(row?.assetCode || row?.scriptCode || `${row?.showName}-${row?.beatName}`).trim();
+          if (row.source === "production") entry.productionAssets.add(assetCode);
+          else entry.liveAssets.add(assetCode);
+        }
+        return map;
+      }, new Map())
+      .values()
+  )
+    .map((entry) => {
+      const productionCount = entry.productionAssets.size;
+      const liveCount = entry.liveAssets.size;
+      const totalCount = productionCount + liveCount;
+      return {
+        acdName: entry.acdName,
+        productionCount,
+        liveCount,
+        totalCount,
+      };
+    })
+    .sort((a, b) => b.totalCount - a.totalCount || a.acdName.localeCompare(b.acdName))
+    .slice(0, 8);
+
+  const fullGenAiByBeat = Array.from(
+    scopedFullGenAiRows.reduce((map, row) => {
+      const key = `${row.showName}|${row.beatName}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          showName: row.showName,
+          beatName: row.beatName,
+          attempts: 0,
+          successCount: 0,
+        });
+      }
+      const entry = map.get(key);
+      entry.attempts += 1;
+      if (row.success) entry.successCount += 1;
+      return map;
+    }, new Map()).values()
+  )
+    .map((entry) => ({
+      ...entry,
+      hitRate: entry.attempts > 0 ? Number(((entry.successCount / entry.attempts) * 100).toFixed(1)) : null,
+    }))
+    .sort((a, b) => b.attempts - a.attempts || a.showName.localeCompare(b.showName) || a.beatName.localeCompare(b.beatName));
+
+  const renderLinkMetricCard = ({ label, value, delta, onClick }) => (
+    <button type="button" className="metric-card hero-card overview-link-card" onClick={onClick} title="Click to open">
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">{value}</div>
+      <div className="metric-hint overview-card-delta" style={{ color: delta.color }}>
+        {delta.text}
+      </div>
+    </button>
+  );
+
+  return (
+    <div className="section-stack">
+      {overviewError ? <div className="warning-note">{overviewError}</div> : null}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+        <div className="week-toggle-group">
+          {filterOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={selectedFilterId === option.id ? "is-active" : ""}
+              onClick={() => setSelectedFilterId(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: -8 }}>{selectedRangeLabel || "Select a week"}</div>
+
+      <hr className="section-divider" />
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10 }}>Section 1. Beats</div>
+        <div className="metric-grid four-col">
+          {renderLinkMetricCard({ label: "Total Beats", value: overviewLoading ? "..." : formatMetricValue(totalBeats), delta: totalBeatsDelta, onClick: () => onNavigate?.("beats-performance") })}
+          {renderLinkMetricCard({ label: "Approved Beats", value: overviewLoading ? "..." : formatMetricValue(approvedBeats), delta: approvedBeatsDelta, onClick: () => onNavigate?.("beats-performance") })}
+          {renderLinkMetricCard({ label: "Review Pending", value: overviewLoading ? "..." : formatMetricValue(reviewPendingBeats), delta: reviewPendingDelta, onClick: () => onNavigate?.("beats-performance") })}
+          {renderLinkMetricCard({ label: "Iterate", value: overviewLoading ? "..." : formatMetricValue(iterateBeats), delta: iterateDelta, onClick: () => onNavigate?.("beats-performance") })}
+          {renderLinkMetricCard({ label: "Abandoned", value: overviewLoading ? "..." : formatMetricValue(abandonedBeats), delta: abandonedDelta, onClick: () => onNavigate?.("beats-performance") })}
+          {renderLinkMetricCard({ label: "Delivered Beats", value: overviewLoading ? "..." : formatMetricValue(deliveredBeats), delta: deliveredDelta, onClick: () => onNavigate?.("beats-performance") })}
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Section 2. Writer and POD output</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="week-toggle-group">
+              {[
+                ["pod", "POD"],
+                ["writer", "Writer"],
+              ].map(([id, label]) => (
+                <button key={id} type="button" className={outputMode === id ? "is-active" : ""} onClick={() => setOutputMode(id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="ghost-button overview-section-link" onClick={() => onNavigate?.("pod-wise")}>
+              Open POD Wise
+            </button>
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>{outputMode === "pod" ? "POD" : "POD"}</th>
+                {outputMode === "writer" ? <th>Writer</th> : null}
+                <th>Ideation</th>
+                <th>Editorial</th>
+                <th>Ready for Production</th>
+                <th>Production</th>
+                <th>Live</th>
+                <th>Delivered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outputRows.length > 0 ? (
+                outputRows.map((row) => (
+                  <tr key={`${row.podLeadName}-${row.writerName}`}>
+                    <td>{row.podLeadName || "-"}</td>
+                    {outputMode === "writer" ? <td>{row.writerName || "-"}</td> : null}
+                    <td>{formatMetricValue(row.ideationCount)}</td>
+                    <td>{formatMetricValue(row.editorialCount)}</td>
+                    <td>{formatMetricValue(row.readyForProductionCount)}</td>
+                    <td>{formatMetricValue(row.productionCount)}</td>
+                    <td>{formatMetricValue(row.liveCount)}</td>
+                    <td>{formatMetricValue(row.deliveredCount)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={outputMode === "writer" ? "8" : "7"}>No output rows available for this filter yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Section 3. Production</div>
+          <button type="button" className="ghost-button overview-section-link" onClick={() => onNavigate?.("production")}>
+            Open Production
+          </button>
+        </div>
+        <div className="panel-card">
+          <div className="panel-head" style={{ marginBottom: 8 }}>
+            <div>
+              <div className="panel-title">ACD productivity</div>
+              <div className="panel-statline">Smaller rolling view for the selected week’s production and live movement.</div>
+            </div>
+          </div>
+          <div style={{ width: "100%", height: 280 }}>
+            {throughputByAcd.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={throughputByAcd} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                  <XAxis type="number" allowDecimals={false} />
+                  <YAxis type="category" dataKey="acdName" width={140} />
+                  <Tooltip />
+                  <Bar dataKey="totalCount" fill={CHART_TONE_POSITIVE} radius={[0, 8, 8, 0]}>
+                    <LabelList dataKey="totalCount" position="right" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState text="No throughput rows available for this filter yet." />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10 }}>Section 4. Full Gen AI</div>
+        <div className="metric-grid three-col">
+          <MetricCard label="Assets passed to Full Gen AI" value={overviewLoading ? "..." : formatMetricValue(scopedFullGenAiRows.length)} />
+          <MetricCard label="Success" value={overviewLoading ? "..." : formatMetricValue(scopedFullGenAiRows.filter((row) => row.success).length)} />
+          <MetricCard
+            label="Overall hit rate"
+            value={
+              overviewLoading
+                ? "..."
+                : scopedFullGenAiRows.length > 0
+                  ? formatPercent((scopedFullGenAiRows.filter((row) => row.success).length / scopedFullGenAiRows.length) * 100)
+                  : "-"
+            }
+          />
+        </div>
+        <div style={{ overflowX: "auto", marginTop: 14 }}>
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>Show</th>
+                <th>Beat</th>
+                <th>Attempts</th>
+                <th>Success</th>
+                <th>Hit rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fullGenAiByBeat.length > 0 ? (
+                fullGenAiByBeat.map((row) => (
+                  <tr key={`${row.showName}-${row.beatName}`}>
+                    <td>{row.showName || "-"}</td>
+                    <td>{row.beatName || "-"}</td>
+                    <td>{formatMetricValue(row.attempts)}</td>
+                    <td>{formatMetricValue(row.successCount)}</td>
+                    <td>{row.hitRate != null ? formatPercent(row.hitRate) : "-"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5">No Full Gen AI rows for this filter yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10 }}>Section 5. Current week update</div>
+        <div style={{ overflowX: "auto" }}>
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>POD</th>
+                <th>Writer</th>
+                <th>Beats</th>
+                <th>Editorial</th>
+                <th>Ready for Production</th>
+                <th>Production</th>
+                <th>Live</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentWeekUpdateRows.length > 0 ? (
+                currentWeekUpdateRows.map((row) => (
+                  <tr key={`${row.podLeadName}-${row.writerName}`}>
+                    <td>{row.podLeadName || "-"}</td>
+                    <td>{row.writerName || "-"}</td>
+                    <td>{formatMetricValue(row.beats)}</td>
+                    <td>{formatMetricValue(row.editorial)}</td>
+                    <td>{formatMetricValue(row.readyForProduction)}</td>
+                    <td>{formatMetricValue(row.production)}</td>
+                    <td>{formatMetricValue(row.live)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7">No current week update rows available yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2788,7 +3227,7 @@ async function readJson(response) {
 }
 
 export default function UnifiedOpsApp() {
-  const [activeView, setActiveView] = useState("overview");
+  const [activeView, setActiveView] = useState("leadership-overview");
   const [editorialPeriod, setEditorialPeriod] = useState("current");
   const [selectedAnalyticsWeekKey, setSelectedAnalyticsWeekKey] = useState(getWeekSelection("current").weekKey);
   const [plannerBoardSnapshot, setPlannerBoardSnapshot] = useState(null);
@@ -2797,6 +3236,11 @@ export default function UnifiedOpsApp() {
     Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]))
   );
   const [overviewErrorByPeriod, setOverviewErrorByPeriod] = useState({});
+  const [leadershipOverviewDataByPeriod, setLeadershipOverviewDataByPeriod] = useState({});
+  const [leadershipOverviewLoadingByPeriod, setLeadershipOverviewLoadingByPeriod] = useState(
+    Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]))
+  );
+  const [leadershipOverviewErrorByPeriod, setLeadershipOverviewErrorByPeriod] = useState({});
   const [productionDataByPeriod, setProductionDataByPeriod] = useState({});
   const [productionLoadingByPeriod, setProductionLoadingByPeriod] = useState(
     Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]))
@@ -2975,6 +3419,48 @@ export default function UnifiedOpsApp() {
       cancelled = true;
     };
   }, [includeNewShowsPod]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLeadershipOverviewSections() {
+      const nextLoadingState = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]));
+      setLeadershipOverviewLoadingByPeriod(nextLoadingState);
+      setLeadershipOverviewErrorByPeriod({});
+
+      try {
+        const response = await fetch("/api/dashboard/leadership-overview", { cache: "no-store" });
+        const payload = await readJson(response);
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load Overview.");
+        }
+
+        if (!cancelled) {
+          const nextData = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, payload]));
+          const nextLoading = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, false]));
+          setLeadershipOverviewDataByPeriod(nextData);
+          setLeadershipOverviewErrorByPeriod({});
+          setLeadershipOverviewLoadingByPeriod(nextLoading);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const nextData = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, null]));
+          const nextLoading = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, false]));
+          const nextErrors = Object.fromEntries(
+            OVERVIEW_PERIODS.map((period) => [period, error?.message || "Unable to load Overview."])
+          );
+          setLeadershipOverviewDataByPeriod(nextData);
+          setLeadershipOverviewErrorByPeriod(nextErrors);
+          setLeadershipOverviewLoadingByPeriod(nextLoading);
+        }
+      }
+    }
+
+    void loadLeadershipOverviewSections();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -3381,6 +3867,7 @@ export default function UnifiedOpsApp() {
           <div className="sidebar-section">
             <div className="sidebar-section-label">VIEWS</div>
             {[
+              ["leadership-overview", "Overview"],
               ["overview", "Editorial Funnel"],
               ["beats-performance", "Beats Performance"],
               ["pod-wise", "POD Wise"],
@@ -3413,6 +3900,42 @@ export default function UnifiedOpsApp() {
 
         <main className="ops-main">
           <div className="ops-shell">
+            {activeView === "leadership-overview" ? (
+              <>
+                <div className="page-header">
+                  <div className="page-header-kicker">Leadership Snapshot</div>
+                  <h1 className="page-header-title">Overview</h1>
+                  <p className="page-header-sub">Beats, POD output, production throughput, and Full Gen AI in one weekly view</p>
+                </div>
+                <div className="section-shell">
+                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                    <div className="week-toggle-group">
+                      {[
+                        { id: "last", label: "Last week" },
+                        { id: "current", label: "This week" },
+                        { id: "next", label: "Next week" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={editorialPeriod === opt.id ? "is-active" : ""}
+                          onClick={() => setEditorialPeriod(opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <LeadershipOverviewContent
+                    leadershipOverviewDataByPeriod={leadershipOverviewDataByPeriod}
+                    leadershipOverviewLoadingByPeriod={leadershipOverviewLoadingByPeriod}
+                    leadershipOverviewErrorByPeriod={leadershipOverviewErrorByPeriod}
+                    onNavigate={setActiveView}
+                  />
+                </div>
+              </>
+            ) : null}
+
             {activeView === "overview" ? (
               <>
                 <div className="page-header">

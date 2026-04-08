@@ -125,7 +125,7 @@ function buildCurrentWeekPayload(plannerState) {
   const allProductionAssetCount = countAllAssetsWithStage(plannerState.pods, "production");
   const allLiveOnMetaAssetCount = countAllAssetsWithStage(plannerState.pods, "live_on_meta");
   const activeWriterCount = countActiveWritersInPods(plannerState.pods);
-  const submittedByThursday = countAssetsSubmittedByDay(plannerState.pods, 3); // Thu = index 3
+  const submittedByThursday = countAssetsSubmittedByDay(plannerState.pods, 3);
 
   return {
     ok: true,
@@ -224,12 +224,6 @@ function isFunnelSuccess(row) {
   const absoluteCompletion = toFiniteNumber(row?.absoluteCompletionPct);
   const cpi = toFiniteNumber(row?.cpiUsd);
 
-  // ALL criteria must be met for success:
-  // 1. Amount spent >= $100
-  // 2. Q1 completion > 10%
-  // 3. CTI >= 12%
-  // 4. Absolute completion >= 1.8%
-  // 5. CPI <= $12
   return (
     Number.isFinite(amountSpent) && amountSpent >= 100 &&
     Number.isFinite(q1Completion) && q1Completion > 10 &&
@@ -257,7 +251,6 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
   const lastWeek = getWeekSelection("last");
   const lastWeekKey = lastWeek.weekKey;
 
-  // Filter to rows with live dates in last week, respecting POD toggle
   const weekFiltered = (Array.isArray(analyticsRows) ? analyticsRows : []).filter((row) => {
     if (!row?.liveDate) return false;
     const window = getWeekWindowFromReference(row.liveDate);
@@ -266,7 +259,6 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
     return true;
   });
 
-  // Deduplicate by asset code
   const dedupMap = new Map();
   for (const row of weekFiltered) {
     const key = String(row?.assetCode || "").trim().toLowerCase();
@@ -277,9 +269,6 @@ function buildLastWeekHitRateAndFunnel(analyticsRows, { includeNewShowsPod = fal
   }
 
   const dedupedRows = Array.from(dedupMap.values());
-
-  // Hit rate and funnel use only analytics-eligible production types
-  // Success = ALL criteria met: $100+ spent, Q1 > 10%, CTI >= 12%, Abs completion >= 1.8%
   const eligibleRows = dedupedRows.filter((r) => isAnalyticsEligibleProductionType(r?.productionType));
   let successCount = 0;
 
