@@ -619,6 +619,11 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             }
           />
         </div>
+        {overviewData?.fullGenAiSourceError ? (
+          <div className="warning-note" style={{ marginTop: 10 }}>
+            Full Gen AI source warning: {overviewData.fullGenAiSourceError}
+          </div>
+        ) : null}
         <div className="table-wrap">
           <table className="ops-table overview-table">
             <thead>

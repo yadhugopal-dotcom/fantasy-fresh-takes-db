@@ -482,7 +482,9 @@ export async function GET(request) {
       fetchReadyForProductionWorkflowRows().catch(() => ({ rows: [] })),
       fetchProductionWorkflowRows().catch(() => ({ rows: [] })),
       fetchLiveWorkflowRows().catch(() => ({ rows: [] })),
-      fetchAnalyticsLiveTabRows().catch(() => ({ rows: [] })),
+      fetchAnalyticsLiveTabRows()
+        .then((value) => ({ rows: value?.rows || [], error: "" }))
+        .catch((error) => ({ rows: [], error: error?.message || "Analytics source unavailable for Full Gen AI." })),
     ]);
 
     const beatRows = buildBeatRows(ideationResult?.rows || []);
@@ -513,6 +515,7 @@ export async function GET(request) {
       allWorkflowRows: workflowRows,
       approvedMatchedRows,
       fullGenAiRows,
+      fullGenAiSourceError: analyticsResult?.error || "",
       currentWeekUpdateRows,
     });
   } catch (error) {
