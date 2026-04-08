@@ -129,7 +129,17 @@ export function PodTasksContent({ podTasksData, podTasksLoading, onShare, copyin
 
 // ─── Main View ────────────────────────────────────────────────────────────────
 
-export default function PodWiseContent({ competitionPodRows, competitionLoading, onShare, copyingSection }) {
+export default function PodWiseContent({
+  competitionPodRows,
+  competitionLoading,
+  competitionWeekLabel,
+  performanceRangeMode,
+  onPerformanceRangeModeChange,
+  performanceScope,
+  onPerformanceScopeChange,
+  onShare,
+  copyingSection,
+}) {
   if (competitionLoading) {
     return <EmptyState text="Loading POD Wise dashboard..." />;
   }
@@ -144,10 +154,13 @@ export default function PodWiseContent({ competitionPodRows, competitionLoading,
       const beats = row.lifetimeBeats || 0;
       const scripts = row.lifetimeScripts || 0;
       const successful = row.hitRateNumerator || 0;
+      const throughputScore = row.throughputScore || successful;
       const conversion = scripts > 0 ? Math.round((successful / scripts) * 100) : 0;
-      return { ...row, beats, scripts, successful, conversion };
+      return { ...row, beats, scripts, successful, conversion, throughputScore };
     })
-    .sort((a, b) => b.conversion - a.conversion || b.successful - a.successful);
+    .sort((a, b) => b.throughputScore - a.throughputScore || b.successful - a.successful || b.conversion - a.conversion);
+
+  const bestPod = sorted[0] || null;
 
   const totalBeats = sorted.reduce((s, r) => s + r.beats, 0);
   const totalScripts = sorted.reduce((s, r) => s + r.scripts, 0);
@@ -165,6 +178,55 @@ export default function PodWiseContent({ competitionPodRows, competitionLoading,
       isSharing={copyingSection === "POD Wise leaderboard"}
     >
       <div className="section-stack">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div className="week-toggle-group">
+            {[
+              { id: "selected", label: "Selected range" },
+              { id: "lifetime", label: "Lifetime (Mar 16+)" },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={performanceRangeMode === opt.id ? "is-active" : ""}
+                onClick={() => onPerformanceRangeModeChange?.(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="week-toggle-group">
+            {[
+              { id: "bau", label: "BAU" },
+              { id: "bau-lt", label: "BAU + LT" },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={performanceScope === opt.id ? "is-active" : ""}
+                onClick={() => onPerformanceScopeChange?.(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {competitionWeekLabel ? (
+          <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: -6 }}>{competitionWeekLabel}</div>
+        ) : null}
+
+        {bestPod ? (
+          <div className="metric-card" style={{ borderLeft: "4px solid var(--accent)" }}>
+            <div className="metric-label">Best POD</div>
+            <div className="metric-value" style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <span>{bestPod.podLeadName}</span>
+              <span style={{ fontSize: 16, color: "var(--subtle)" }}>Score: {formatMetricValue(bestPod.throughputScore)}</span>
+            </div>
+            <div className="metric-hint">
+              POD Lead x Writers ({formatMetricValue(bestPod.writerCount)}) x Output ({formatMetricValue(bestPod.scripts)}) x Success ({formatMetricValue(bestPod.successful)})
+            </div>
+          </div>
+        ) : null}
+
         <div className="pod-summary-grid">
           {[
             { label: "Total beats", value: totalBeats },
@@ -181,7 +243,7 @@ export default function PodWiseContent({ competitionPodRows, competitionLoading,
 
         <div className="pod-section-header">
           <span className="pod-section-title">POD performance</span>
-          <span className="pod-section-subtitle">Ranked by successful scripts as % of total attempted scripts</span>
+          <span className="pod-section-subtitle">Ranked by throughput score (successful beats/scripts)</span>
         </div>
 
         <div className="pod-cards-stack">
@@ -207,6 +269,31 @@ export default function PodWiseContent({ competitionPodRows, competitionLoading,
               </div>
             );
           })}
+        </div>
+
+        <div className="table-wrap">
+          <table className="ops-table overview-table">
+            <thead>
+              <tr>
+                <th>POD lead</th>
+                <th>Writers</th>
+                <th>Output</th>
+                <th>Success</th>
+                <th>Throughput score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((row) => (
+                <tr key={`pod-score-${row.podLeadName}`}>
+                  <td>{row.podLeadName}</td>
+                  <td>{formatMetricValue(row.writerCount)}</td>
+                  <td>{formatMetricValue(row.scripts)}</td>
+                  <td>{formatMetricValue(row.successful)}</td>
+                  <td>{formatMetricValue(row.throughputScore)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="pod-legend">

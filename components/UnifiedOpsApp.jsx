@@ -253,6 +253,8 @@ export default function UnifiedOpsApp() {
   const [includeNewShowsPod, setIncludeNewShowsPod] = useState(false);
   const [notice, setNotice] = useState(null);
   const [podWiseView, setPodWiseView] = useState("performance");
+  const [podPerformanceRangeMode, setPodPerformanceRangeMode] = useState("selected");
+  const [podPerformanceScope, setPodPerformanceScope] = useState("bau");
   const [podTasksData, setPodTasksData] = useState(null);
   const [podTasksLoading, setPodTasksLoading] = useState(false);
   const [beatsPerformanceData, setBeatsPerformanceData] = useState(null);
@@ -479,7 +481,7 @@ export default function UnifiedOpsApp() {
 
     let cancelled = false;
     const rangeSelection = buildDateRangeSelection(dashboardDateRange);
-    const cacheKey = `pod-wise-performance:${rangeSelection.startDate}:${rangeSelection.endDate}`;
+    const cacheKey = `pod-wise-performance:${podPerformanceRangeMode}:${podPerformanceScope}:${rangeSelection.startDate}:${rangeSelection.endDate}`;
     const cachedPayload = readClientCache(cacheKey);
     if (cachedPayload) {
       setCompetitionData(cachedPayload);
@@ -492,7 +494,9 @@ export default function UnifiedOpsApp() {
       }
       try {
         const response = await fetch(
-          `/api/dashboard/competition?startDate=${encodeURIComponent(rangeSelection.startDate)}&endDate=${encodeURIComponent(rangeSelection.endDate)}`,
+          podPerformanceRangeMode === "lifetime"
+            ? `/api/dashboard/competition?mode=lifetime&scope=${encodeURIComponent(podPerformanceScope)}`
+            : `/api/dashboard/competition?startDate=${encodeURIComponent(rangeSelection.startDate)}&endDate=${encodeURIComponent(rangeSelection.endDate)}&scope=${encodeURIComponent(podPerformanceScope)}`,
           { cache: "no-store" }
         );
         const payload = await readJson(response);
@@ -525,7 +529,7 @@ export default function UnifiedOpsApp() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeView, podWiseView, dashboardDateRange, competitionData]);
+  }, [activeView, podWiseView, dashboardDateRange, competitionData, podPerformanceRangeMode, podPerformanceScope]);
 
   useEffect(() => {
     if (activeView !== "pod-wise" || podWiseView !== "tasks") {
@@ -1129,6 +1133,11 @@ export default function UnifiedOpsApp() {
                   <PodWiseContent
                     competitionPodRows={competitionData?.podRows}
                     competitionLoading={competitionLoading}
+                    competitionWeekLabel={competitionData?.weekLabel}
+                    performanceRangeMode={podPerformanceRangeMode}
+                    onPerformanceRangeModeChange={setPodPerformanceRangeMode}
+                    performanceScope={podPerformanceScope}
+                    onPerformanceScopeChange={setPodPerformanceScope}
                     onShare={copySection}
                     copyingSection={copyingSection}
                   />

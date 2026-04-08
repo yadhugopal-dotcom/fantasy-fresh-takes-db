@@ -17,6 +17,7 @@ import {
   createDefaultWriterConfig,
   generateWeekKeysSince,
   getCurrentWeekKey,
+  isNonBauPodLeadName,
   isVisiblePlannerPodLeadName,
   mergeWeekData,
   mergeWriterConfig,
@@ -24,7 +25,7 @@ import {
 import { buildDateRangeSelection, formatWeekRangeLabel, getWeekSelection, normalizeWeekView } from "../../../../lib/week-view.js";
 
 const CONFIG_PATH = "config/writer-config.json";
-const LIFETIME_SINCE = "2026-03-10";
+const LIFETIME_SINCE = "2026-03-16";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -256,6 +257,33 @@ function buildPodRosterMeta(pods) {
   return { podOrder, podWriterCounts };
 }
 
+function filterPodOrderByScope(podOrder, scope = "bau") {
+  const safeOrder = Array.isArray(podOrder) ? podOrder : [];
+  if (String(scope || "").toLowerCase() === "bau-lt") {
+    return safeOrder;
+  }
+  return safeOrder.filter((podLeadName) => !isNonBauPodLeadName(podLeadName));
+}
+
+function buildPodRowsFromMaps(podOrder, rosterMeta, beatsMap, scriptsMap, hitRateMap) {
+  return podOrder.map((podLeadName) => {
+    const hitStats = hitRateMap.get(podLeadName) || { totalLive: 0, hits: 0 };
+    const successfulBeats = Number(hitStats.hits || 0);
+    return {
+      podLeadName,
+      lifetimeBeats: beatsMap.get(podLeadName) || 0,
+      lifetimeScripts: scriptsMap.get(podLeadName) || 0,
+      hitRateNumerator: successfulBeats,
+      hitRateDenominator: hitStats.totalLive,
+      hitRate: hitStats.totalLive > 0 ? Number(((successfulBeats / hitStats.totalLive) * 100).toFixed(1)) : null,
+      successfulBeats,
+      throughputScore: successfulBeats,
+      lwEditorialOutput: beatsMap.get(podLeadName) || 0,
+      writerCount: Number(rosterMeta.podWriterCounts[podLeadName] || 0),
+    };
+  });
+}
+
 async function loadLifetimeCompetitionData(rosterMeta) {
   const weekKeys = generateWeekKeysSince(LIFETIME_SINCE);
   const lastWeekSelection = getWeekSelection("last");
@@ -279,22 +307,10 @@ async function loadLifetimeCompetitionData(rosterMeta) {
   const hitRateMap = computeHitRatePerPod(analyticsResult.rows, LIFETIME_SINCE);
   const lwEditorialMap = buildLwEditorialOutputPerPod(editorialResult.rows, productionResult.rows, lastWeekSelection);
 
-  const podRows = [];
-  for (const podLeadName of rosterMeta.podOrder) {
-    const hitStats = hitRateMap.get(podLeadName) || { totalLive: 0, hits: 0 };
-    podRows.push({
-      podLeadName,
-      lifetimeBeats: lifetimeBeatsMap.get(podLeadName) || 0,
-      lifetimeScripts: lifetimeScriptsMap.get(podLeadName) || 0,
-      hitRateNumerator: hitStats.hits,
-      hitRateDenominator: hitStats.totalLive,
-      hitRate: hitStats.totalLive > 0 ? Number(((hitStats.hits / hitStats.totalLive) * 100).toFixed(1)) : null,
-      lwEditorialOutput: lwEditorialMap.get(podLeadName) || 0,
-      writerCount: Number(rosterMeta.podWriterCounts[podLeadName] || 0),
-    });
-  }
-
-  return podRows;
+  return buildPodRowsFromMaps(rosterMeta.podOrder, rosterMeta, lifetimeBeatsMap, lifetimeScriptsMap, hitRateMap).map((row) => ({
+    ...row,
+    lwEditorialOutput: lwEditorialMap.get(row.podLeadName) || 0,
+  }));
 }
 
 async function loadWeeklyCompetitionData(rosterMeta, period) {
@@ -310,20 +326,10 @@ async function loadWeeklyCompetitionData(rosterMeta, period) {
   const hitRateMap = computeHitRatePerPodForWeek(analyticsResult.rows, weekSelection);
   const beatsMap = buildLwEditorialOutputPerPod(editorialResult.rows, productionResult.rows, weekSelection);
 
-  const podRows = [];
-  for (const podLeadName of rosterMeta.podOrder) {
-    const hitStats = hitRateMap.get(podLeadName) || { totalLive: 0, hits: 0 };
-    podRows.push({
-      podLeadName,
-      lifetimeBeats: beatsMap.get(podLeadName) || 0,
-      lifetimeScripts: scriptsMap.get(podLeadName) || 0,
-      hitRateNumerator: hitStats.hits,
-      hitRateDenominator: hitStats.totalLive,
-      hitRate: hitStats.totalLive > 0 ? Number(((hitStats.hits / hitStats.totalLive) * 100).toFixed(1)) : null,
-      lwEditorialOutput: beatsMap.get(podLeadName) || 0,
-      writerCount: Number(rosterMeta.podWriterCounts[podLeadName] || 0),
-    });
-  }
+  const podRows = buildPodRowsFromMaps(rosterMeta.podOrder, rosterMeta, beatsMap, scriptsMap, hitRateMap).map((row) => ({
+    ...row,
+    lwEditorialOutput: beatsMap.get(row.podLeadName) || 0,
+  }));
 
   return {
     podRows,
@@ -336,6 +342,8 @@ async function loadWeeklyCompetitionData(rosterMeta, period) {
 export async function GET(request) {
   const url = new URL(request.url);
   const rawPeriod = String(url.searchParams.get("period") || "").trim().toLowerCase();
+  const mode = String(url.searchParams.get("mode") || "").trim().toLowerCase();
+  const scope = String(url.searchParams.get("scope") || "bau").trim().toLowerCase();
   const startDate = url.searchParams.get("startDate");
   const endDate = url.searchParams.get("endDate");
   const hasPeriodFilter = rawPeriod === "last" || rawPeriod === "current" || rawPeriod === "next";
@@ -350,10 +358,25 @@ export async function GET(request) {
     const weekData = mergeWeekData(currentConfig, storedWeek, currentWeekKey);
     const pods = buildPodsModel(currentConfig, weekData).filter((pod) => isVisiblePlannerPodLeadName(pod?.cl));
     const rosterMeta = buildPodRosterMeta(pods);
+    const scopedPodOrder = filterPodOrderByScope(rosterMeta.podOrder, scope);
+    const scopedRosterMeta = { ...rosterMeta, podOrder: scopedPodOrder };
+
+    if (mode === "lifetime") {
+      const podRows = await loadLifetimeCompetitionData(scopedRosterMeta);
+      return NextResponse.json({
+        ok: true,
+        podRows,
+        period: "lifetime",
+        weekKey: LIFETIME_SINCE,
+        weekLabel: `Lifetime (${LIFETIME_SINCE}+)`,
+        selectionMode: "lifetime",
+        scope,
+      });
+    }
 
     if (hasPeriodFilter || hasDateRangeFilter) {
       const selection = hasDateRangeFilter ? buildDateRangeSelection({ startDate, endDate, period }) : null;
-      const weekly = await loadWeeklyCompetitionData(rosterMeta, hasDateRangeFilter ? selection.period : period);
+      const weekly = await loadWeeklyCompetitionData(scopedRosterMeta, hasDateRangeFilter ? selection.period : period);
       const effectiveWeekSelection = hasDateRangeFilter ? selection : getWeekSelection(weekly.period);
       const [liveResult, analyticsResult, editorialResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
@@ -364,19 +387,10 @@ export async function GET(request) {
       const scriptsMap = buildScriptsPerPodForWeek(liveResult.rows, effectiveWeekSelection);
       const hitRateMap = computeHitRatePerPodForWeek(analyticsResult.rows, effectiveWeekSelection);
       const beatsMap = buildLwEditorialOutputPerPod(editorialResult.rows, productionResult.rows, effectiveWeekSelection);
-      const podRows = rosterMeta.podOrder.map((podLeadName) => {
-        const hitStats = hitRateMap.get(podLeadName) || { totalLive: 0, hits: 0 };
-        return {
-          podLeadName,
-          lifetimeBeats: beatsMap.get(podLeadName) || 0,
-          lifetimeScripts: scriptsMap.get(podLeadName) || 0,
-          hitRateNumerator: hitStats.hits,
-          hitRateDenominator: hitStats.totalLive,
-          hitRate: hitStats.totalLive > 0 ? Number(((hitStats.hits / hitStats.totalLive) * 100).toFixed(1)) : null,
-          lwEditorialOutput: beatsMap.get(podLeadName) || 0,
-          writerCount: Number(rosterMeta.podWriterCounts[podLeadName] || 0),
-        };
-      });
+      const podRows = buildPodRowsFromMaps(scopedPodOrder, scopedRosterMeta, beatsMap, scriptsMap, hitRateMap).map((row) => ({
+        ...row,
+        lwEditorialOutput: beatsMap.get(row.podLeadName) || 0,
+      }));
 
       return NextResponse.json({
         ok: true,
@@ -385,12 +399,13 @@ export async function GET(request) {
         weekKey: effectiveWeekSelection.weekKey,
         weekLabel: formatWeekRangeLabel(effectiveWeekSelection.weekStart, effectiveWeekSelection.weekEnd),
         selectionMode: hasDateRangeFilter ? "date-range" : "week",
+        scope,
       });
     }
 
-    const podRows = await loadLifetimeCompetitionData(rosterMeta);
+    const podRows = await loadLifetimeCompetitionData(scopedRosterMeta);
 
-    return NextResponse.json({ ok: true, podRows, selectionMode: "lifetime" });
+    return NextResponse.json({ ok: true, podRows, selectionMode: "lifetime", scope });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error.message || "Unable to load competition data." },
