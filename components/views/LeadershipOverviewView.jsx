@@ -326,7 +326,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       <section className="overview-flow-section">
         <div className="overview-section-head">
           <div>
-            <div className="overview-section-kicker">Section 1</div>
             <div className="overview-section-title">Beats</div>
           </div>
           <div className="overview-section-actions">
@@ -350,7 +349,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       <section className="overview-flow-section">
         <div className="overview-section-head">
           <div>
-            <div className="overview-section-kicker">Section 2</div>
             <div className="overview-section-title">Writer and POD output</div>
           </div>
           <div className="overview-section-actions" style={{ marginLeft: "auto", justifyContent: "flex-end" }}>
@@ -474,7 +472,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       <section className="overview-flow-section">
         <div className="overview-section-head">
           <div>
-            <div className="overview-section-kicker">Section 3</div>
             <div className="overview-section-title">Production throughput</div>
           </div>
           <div className="overview-section-actions" style={{ marginLeft: "auto", justifyContent: "flex-end" }}>
@@ -594,7 +591,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       <section className="overview-flow-section">
         <div className="overview-section-head">
           <div>
-            <div className="overview-section-kicker">Section 4</div>
             <div className="overview-section-title">Full Gen AI</div>
           </div>
           <div className="overview-section-note">
