@@ -178,6 +178,165 @@ function buildAnalyticsSubtitle(data) {
   return parts.join(" · ");
 }
 
+function buildDemoOverviewPayload(rangeSelection) {
+  return {
+    ok: true,
+    period: "range",
+    selectionMode: "editorial_funnel",
+    weekStart: rangeSelection.startDate,
+    weekEnd: rangeSelection.endDate,
+    weekLabel: formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate),
+    hasWeekData: true,
+    plannerBeatCount: 18,
+    inProductionBeatCount: 11,
+    scriptsPerWriter: 1.7,
+    averageClReviewDays: 1.2,
+    tatSummary: { averageTatDays: 2.6, eligibleAssetCount: 14 },
+    podThroughputRows: [
+      {
+        podLeadName: "Woodward",
+        lwProductionCount: 5,
+        thisWeekBeatsCount: 7,
+        wipCount: 2,
+        reviewWithClCount: 1,
+        onTrackCount: 4,
+        readinessStage: "On Track",
+        thuStatusMessage: "Thu update sent",
+        writerRows: [{ writerName: "Writer A", lwProductionCount: 3, thisWeekBeatsCount: 4, wipCount: 1, reviewWithClCount: 1, onTrackCount: 2, readinessStage: "On Track" }],
+      },
+      {
+        podLeadName: "Berman",
+        lwProductionCount: 4,
+        thisWeekBeatsCount: 6,
+        wipCount: 2,
+        reviewWithClCount: 1,
+        onTrackCount: 3,
+        readinessStage: "WIP",
+        thuStatusMessage: "Needs Thursday update",
+        writerRows: [{ writerName: "Writer B", lwProductionCount: 2, thisWeekBeatsCount: 3, wipCount: 1, reviewWithClCount: 0, onTrackCount: 2, readinessStage: "WIP" }],
+      },
+    ],
+    beatsFunnel: [
+      { showName: "MVS", beatName: "Prom", attempts: 4, successfulAttempts: 2 },
+      { showName: "WBT", beatName: "Hydra", attempts: 3, successfulAttempts: 1 },
+    ],
+    hitRate: 42.9,
+    hitRateNumerator: 3,
+    hitRateDenominator: 7,
+  };
+}
+
+function buildDemoLeadershipPayload(rangeSelection) {
+  return {
+    ok: true,
+    selectedWeekRangeLabel: formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate),
+    beatRows: [
+      { id: "1", statusCategory: "approved", podLeadName: "Woodward", showName: "MVS", beatName: "Prom", monthKey: "2026-04", weekInMonth: 2 },
+      { id: "2", statusCategory: "review_pending", podLeadName: "Berman", showName: "WBT", beatName: "Hydra", monthKey: "2026-04", weekInMonth: 2 },
+    ],
+    allBeatRows: [],
+    workflowRows: [
+      { id: "w1", source: "production", podLeadName: "Woodward", writerName: "Writer A", showName: "MVS", beatName: "Prom", stageDate: rangeSelection.startDate },
+      { id: "w2", source: "ready_for_production", podLeadName: "Berman", writerName: "Writer B", showName: "WBT", beatName: "Hydra", stageDate: rangeSelection.startDate },
+    ],
+    allWorkflowRows: [],
+    approvedMatchedRows: [],
+    fullGenAiRows: [
+      { id: "g1", showName: "MVS", beatName: "Prom", success: true },
+      { id: "g2", showName: "WBT", beatName: "Hydra", success: false },
+    ],
+    currentWeekUpdateRows: [
+      { podLeadName: "Woodward", writerName: "Writer A", beats: 4, editorial: 2, readyForProduction: 1, production: 1, live: 1 },
+      { podLeadName: "Berman", writerName: "Writer B", beats: 3, editorial: 1, readyForProduction: 1, production: 0, live: 0 },
+    ],
+  };
+}
+
+function buildDemoAnalyticsPayload(rangeSelection) {
+  return {
+    ok: true,
+    selectedWeekKey: rangeSelection.startDate,
+    selectedWeekLabel: "Custom",
+    selectedWeekRangeLabel: formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate),
+    rowCount: 2,
+    legend: [
+      { label: "Potential Gen AI", tone: "gen-ai" },
+      { label: "Potential P1 Rework", tone: "rework-p1" },
+      { label: "Testing / Drop", tone: "testing-drop" },
+    ],
+    metricColumns: [
+      { key: "amountSpent", label: "Spend", format: "currency" },
+      { key: "cpi", label: "CPI", format: "currency" },
+      { key: "cti", label: "CTI", format: "percent" },
+    ],
+    rows: [
+      {
+        assetCode: "GA123",
+        rowIndex: 1,
+        showName: "MVS",
+        beatName: "Prom",
+        nextStep: "Potential Gen AI",
+        rowTone: "gen-ai",
+        actioned: false,
+        metrics: {
+          amountSpent: { value: 180, meetsBenchmark: true },
+          cpi: { value: 8.2, meetsBenchmark: true },
+          cti: { value: 14.1, meetsBenchmark: true },
+        },
+      },
+      {
+        assetCode: "GI901",
+        rowIndex: 2,
+        showName: "WBT",
+        beatName: "Hydra",
+        nextStep: "Potential P1 Rework",
+        rowTone: "rework-p1",
+        actioned: false,
+        metrics: {
+          amountSpent: { value: 145, meetsBenchmark: true },
+          cpi: { value: 11.4, meetsBenchmark: false },
+          cti: { value: 12.6, meetsBenchmark: true },
+        },
+      },
+    ],
+  };
+}
+
+function buildDemoProductionPayload(rangeSelection) {
+  return {
+    ok: true,
+    period: "range",
+    weekStart: rangeSelection.startDate,
+    weekEnd: rangeSelection.endDate,
+    weekLabel: formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate),
+    latestWorkDate: rangeSelection.endDate,
+    emptyStateMessage: "",
+    acdChartRows: [
+      { acdName: "ACD 1", totalMinutes: 420, totalImages: 24 },
+      { acdName: "ACD 2", totalMinutes: 360, totalImages: 19 },
+    ],
+    rolling7Rows: [
+      { acdName: "ACD 1", totalMinutes: 420, totalImages: 24 },
+      { acdName: "ACD 2", totalMinutes: 360, totalImages: 19 },
+    ],
+    rolling14Rows: [],
+    rolling30Rows: [],
+    rolling7CdRows: [],
+    rolling14CdRows: [],
+    rolling30CdRows: [],
+    syncStatus: {
+      latestRun: { createdAt: new Date().toISOString(), processedLiveRows: 120, eligibleLiveRows: 85, sheetLinksAttempted: 60, sheetLinksFailed: 6 },
+      adherenceIssueRows: [{ cdName: "CD 1", acdName: "ACD 1", totalAssetsNotAdhering: 2, assets: [{ assetCode: "GA123", imageSheetLink: "" }] }],
+      adherenceRows: [{ cdName: "CD 1", totalAssetsNotAdhering: 2 }],
+      totalFailedSheets: 6,
+      cutoffDate: "2026-03-16",
+      sourceFilterWarning: "",
+      syncError: "",
+    },
+    failureReasonRows: [{ failureReason: "sheet_inaccessible", count: 4 }],
+  };
+}
+
 function Notice({ notice }) {
   if (!notice) {
     return null;
@@ -407,8 +566,8 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!overviewData && !cachedPayload) {
-            setOverviewData(null);
-            setOverviewError(error.message || "Unable to load Overview metrics.");
+            setOverviewData(buildDemoOverviewPayload(rangeSelection));
+            setOverviewError(`Demo mode: ${error.message || "Unable to load Overview metrics."}`);
           }
           setOverviewLoading(false);
         }
@@ -464,8 +623,8 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!leadershipOverviewData && !cachedPayload) {
-            setLeadershipOverviewData(null);
-            setLeadershipOverviewError(error?.message || "Unable to load Overview.");
+            setLeadershipOverviewData(buildDemoLeadershipPayload(rangeSelection));
+            setLeadershipOverviewError(`Demo mode: ${error?.message || "Unable to load Overview."}`);
           }
           setLeadershipOverviewLoading(false);
         }
@@ -693,8 +852,21 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!planner2Data && !cachedPayload) {
-            setPlanner2Data(null);
-            setPlanner2Error(error.message || "Unable to load Planner2.");
+            setPlanner2Data({
+              ok: true,
+              weekLabel: formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate),
+              lastUpdatedAt: new Date().toISOString(),
+              totals: { committedTaskCount: 18, completedTaskCount: 9, laggingTaskCount: 9 },
+              ownerRows: [
+                { ownerName: "Owner A", podLeadName: "Woodward", committedTaskCount: 5, completedTaskCount: 3, laggingTaskCount: 2, activeDays: 4 },
+                { ownerName: "Owner B", podLeadName: "Berman", committedTaskCount: 4, completedTaskCount: 1, laggingTaskCount: 3, activeDays: 4 },
+              ],
+              dayRows: [
+                { date: rangeSelection.startDate, items: [{ committedTaskCount: 6, completedTaskCount: 2, laggingTaskCount: 4 }] },
+                { date: rangeSelection.endDate, items: [{ committedTaskCount: 4, completedTaskCount: 3, laggingTaskCount: 1 }] },
+              ],
+            });
+            setPlanner2Error(`Demo mode: ${error.message || "Unable to load Planner2."}`);
           }
         }
       } finally {
@@ -750,8 +922,8 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!analyticsData && !cachedPayload) {
-            setAnalyticsData(null);
-            setAnalyticsError(error.message || "Unable to load Analytics dashboard.");
+            setAnalyticsData(buildDemoAnalyticsPayload(rangeSelection));
+            setAnalyticsError(`Demo mode: ${error.message || "Unable to load Analytics dashboard."}`);
           }
         }
       } finally {
@@ -791,8 +963,9 @@ export default function UnifiedOpsApp() {
       return payload;
     } catch (error) {
       if (!cancelState?.cancelled) {
-        setAcdMetricsData(null);
-        setAcdMetricsError(error.message || "Unable to load ACD productivity.");
+        const fallbackRange = buildDateRangeSelection(dashboardDateRange);
+        setAcdMetricsData(buildDemoProductionPayload(fallbackRange));
+        setAcdMetricsError(`Demo mode: ${error.message || "Unable to load ACD productivity."}`);
       }
       throw error;
     } finally {
