@@ -1501,6 +1501,20 @@ select {
   min-width: 640px;
 }
 
+.overview-output-table {
+  table-layout: fixed;
+}
+
+.overview-output-table th:first-child,
+.overview-output-table td:first-child {
+  text-align: left;
+}
+
+.overview-output-table th:not(:first-child),
+.overview-output-table td:not(:first-child) {
+  text-align: right;
+}
+
 .analytics-table {
   --analytics-header-group-row-height: 40px;
   min-width: 1880px;

@@ -379,12 +379,10 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
         <div className="table-wrap">
           <table className="ops-table overview-table overview-output-table">
             <colgroup>
-              <col style={{ width: "28%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "15%" }} />
+              <col style={{ width: "48%" }} />
+              {section2Columns.map((column) => (
+                <col key={`col-${column.key}`} style={{ width: `${52 / Math.max(section2Columns.length, 1)}%` }} />
+              ))}
             </colgroup>
             <thead>
               <tr>
@@ -464,9 +462,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
               )}
             </tbody>
           </table>
-        </div>
-        <div className="overview-section-note" style={{ marginTop: 10, color: "var(--red)" }}>
-          Writer rows shown in red indicate zero output across all stage columns for the selected date range.
         </div>
       </section>
 
