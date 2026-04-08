@@ -1299,66 +1299,22 @@ function OverviewContent({
   );
 }
 
-function LeadershipOverviewContent({
-  leadershipOverviewDataByPeriod,
-  leadershipOverviewLoadingByPeriod,
-  leadershipOverviewErrorByPeriod,
-  onNavigate,
-}) {
-  const overviewData =
-    leadershipOverviewDataByPeriod?.current ||
-    leadershipOverviewDataByPeriod?.last ||
-    leadershipOverviewDataByPeriod?.next ||
-    null;
-  const overviewLoading = Boolean(
-    leadershipOverviewLoadingByPeriod?.current ||
-      leadershipOverviewLoadingByPeriod?.last ||
-      leadershipOverviewLoadingByPeriod?.next
-  );
-  const overviewError =
-    leadershipOverviewErrorByPeriod?.current ||
-    leadershipOverviewErrorByPeriod?.last ||
-    leadershipOverviewErrorByPeriod?.next ||
-    "";
-  const [selectedFilterId, setSelectedFilterId] = useState("");
+function LeadershipOverviewContent({ leadershipOverviewData, leadershipOverviewLoading, leadershipOverviewError, onNavigate }) {
+  const overviewData = leadershipOverviewData || null;
+  const overviewLoading = Boolean(leadershipOverviewLoading);
+  const overviewError = leadershipOverviewError || "";
   const [outputMode, setOutputMode] = useState("pod");
-  const filterOptions = Array.isArray(overviewData?.filters) ? overviewData.filters : [];
   const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
   const workflowRows = Array.isArray(overviewData?.workflowRows) ? overviewData.workflowRows : [];
   const approvedMatchedRows = Array.isArray(overviewData?.approvedMatchedRows) ? overviewData.approvedMatchedRows : [];
   const fullGenAiRows = Array.isArray(overviewData?.fullGenAiRows) ? overviewData.fullGenAiRows : [];
   const currentWeekUpdateRows = Array.isArray(overviewData?.currentWeekUpdateRows) ? overviewData.currentWeekUpdateRows : [];
-
-  useEffect(() => {
-    if (filterOptions.length === 0) {
-      return;
-    }
-    if (!selectedFilterId || !filterOptions.some((option) => option.id === selectedFilterId)) {
-      setSelectedFilterId(filterOptions[filterOptions.length - 1]?.id || "");
-    }
-  }, [filterOptions, selectedFilterId]);
-
-  const selectedFilterOption = filterOptions.find((option) => option.id === selectedFilterId) || filterOptions[filterOptions.length - 1];
-  const previousFilterOption = selectedFilterOption
-    ? filterOptions[Math.max(0, filterOptions.findIndex((option) => option.id === selectedFilterOption.id) - 1)]
-    : null;
-
-  const matchesSelectedFilter = (row, option) => {
-    if (!row || !option) {
-      return false;
-    }
-    return row.monthKey === option.monthKey && Number(row.weekInMonth || 0) === Number(option.weekInMonth || 0);
-  };
-
-  const scopedBeatRows = beatRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
-  const previousBeatRows =
-    previousFilterOption && previousFilterOption.id !== selectedFilterOption?.id
-      ? beatRows.filter((row) => matchesSelectedFilter(row, previousFilterOption))
-      : [];
-  const scopedWorkflowRows = workflowRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
-  const scopedApprovedMatchedRows = approvedMatchedRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
-  const scopedFullGenAiRows = fullGenAiRows.filter((row) => matchesSelectedFilter(row, selectedFilterOption));
-  const selectedRangeLabel = selectedFilterOption ? getSelectedPeriodRangeLabel(selectedFilterOption, scopedBeatRows) : "";
+  const scopedBeatRows = beatRows;
+  const previousBeatRows = [];
+  const scopedWorkflowRows = workflowRows;
+  const scopedApprovedMatchedRows = approvedMatchedRows;
+  const scopedFullGenAiRows = fullGenAiRows;
+  const selectedRangeLabel = overviewData?.selectedWeekRangeLabel || "";
 
   const countByStatus = (rows, statusCategory) => rows.filter((row) => row.statusCategory === statusCategory).length;
   const totalBeats = scopedBeatRows.length;
@@ -1369,10 +1325,7 @@ function LeadershipOverviewContent({
   const deliveredBeats = approvedBeats;
 
   const deltaMetaFor = (currentValue, previousValue) => {
-    if (!previousFilterOption || previousFilterOption.id === selectedFilterOption?.id) {
-      return { text: "No previous week", color: "var(--subtle)" };
-    }
-    return getDeltaMeta(currentValue, previousValue, `vs ${previousFilterOption.label}`);
+    return { text: "Single-week view", color: "var(--subtle)" };
   };
 
   const totalBeatsDelta = deltaMetaFor(totalBeats, previousBeatRows.length);
@@ -1531,19 +1484,8 @@ function LeadershipOverviewContent({
           </div>
         </div>
         <div className="overview-hero-actions">
-          <div className="week-toggle-group">
-            {filterOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={selectedFilterId === option.id ? "is-active" : ""}
-                onClick={() => setSelectedFilterId(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
           <div className="overview-range-pill">{selectedRangeLabel || "Select a week"}</div>
+          {overviewData?.confidenceNote ? <div className="overview-confidence-note">{overviewData.confidenceNote}</div> : null}
         </div>
       </div>
 
@@ -3304,6 +3246,18 @@ export default function UnifiedOpsApp() {
   const [beatsPerformanceLoading, setBeatsPerformanceLoading] = useState(false);
   const [beatsPerformanceError, setBeatsPerformanceError] = useState("");
 
+  const setPeriodLoadingState = (setter, period, value) => {
+    setter((current) => ({ ...current, [period]: value }));
+  };
+
+  const setPeriodErrorState = (setter, period, value) => {
+    setter((current) => ({ ...current, [period]: value }));
+  };
+
+  const setPeriodDataState = (setter, period, value) => {
+    setter((current) => ({ ...current, [period]: value }));
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -3398,134 +3352,122 @@ export default function UnifiedOpsApp() {
   const analyticsSubtitle = useMemo(() => buildAnalyticsSubtitle(analyticsData), [analyticsData]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadOverviewSections() {
-      const nextLoadingState = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]));
-      setOverviewLoadingByPeriod(nextLoadingState);
-      setProductionLoadingByPeriod(nextLoadingState);
-      setOverviewErrorByPeriod({});
-      setProductionErrorByPeriod({});
-
-      const overviewResults = await Promise.allSettled(
-        OVERVIEW_PERIODS.map(async (period) => {
-          const response = await fetch(`/api/dashboard/overview?period=${encodeURIComponent(period)}&includeNewShowsPod=${includeNewShowsPod}`, {
-            cache: "no-store",
-          });
-          const payload = await readJson(response);
-          if (!response.ok) {
-            throw new Error(payload.liveTabError || payload.error || "Unable to load Overview metrics.");
-          }
-          return { period, payload };
-        })
-      );
-
-      const productionResults = await Promise.allSettled(
-        OVERVIEW_PERIODS.map(async (period) => {
-          const response = await fetch(`/api/dashboard/production?period=${encodeURIComponent(period)}`, {
-            cache: "no-store",
-          });
-          const payload = await readJson(response);
-          if (!response.ok) {
-            throw new Error(payload.error || "Unable to load Production dashboard.");
-          }
-          return { period, payload };
-        })
-      );
-
-      if (cancelled) {
-        return;
-      }
-
-      const nextOverviewData = {};
-      const nextOverviewErrors = {};
-      const nextOverviewLoading = {};
-      const nextProductionData = {};
-      const nextProductionLoading = {};
-      const nextProductionErrors = {};
-
-      overviewResults.forEach((result, index) => {
-        const period = OVERVIEW_PERIODS[index];
-        nextOverviewLoading[period] = false;
-        if (result.status === "fulfilled") {
-          nextOverviewData[period] = result.value.payload;
-        } else {
-          nextOverviewData[period] = null;
-          nextOverviewErrors[period] = result.reason?.message || "Unable to load Overview metrics.";
-        }
-      });
-
-      productionResults.forEach((result, index) => {
-        const period = OVERVIEW_PERIODS[index];
-        nextProductionLoading[period] = false;
-        if (result.status === "fulfilled") {
-          nextProductionData[period] = result.value.payload;
-        } else {
-          nextProductionData[period] = null;
-          nextProductionErrors[period] = result.reason?.message || "Unable to load Production dashboard.";
-        }
-      });
-
-      setOverviewDataByPeriod(nextOverviewData);
-      setOverviewErrorByPeriod(nextOverviewErrors);
-      setOverviewLoadingByPeriod(nextOverviewLoading);
-      setProductionDataByPeriod(nextProductionData);
-      setProductionLoadingByPeriod(nextProductionLoading);
-      setProductionErrorByPeriod(nextProductionErrors);
+    if (activeView !== "overview") {
+      return undefined;
     }
 
-    void loadOverviewSections();
+    let cancelled = false;
+    const period = editorialPeriod;
+
+    async function loadOverviewSectionForPeriod() {
+      setPeriodLoadingState(setOverviewLoadingByPeriod, period, true);
+      setPeriodErrorState(setOverviewErrorByPeriod, period, "");
+
+      try {
+        const overviewResponse = await fetch(
+          `/api/dashboard/overview?period=${encodeURIComponent(period)}&includeNewShowsPod=${includeNewShowsPod}`,
+          { cache: "no-store" }
+        );
+        const overviewPayload = await readJson(overviewResponse);
+        if (!overviewResponse.ok) {
+          throw new Error(overviewPayload.liveTabError || overviewPayload.error || "Unable to load Overview metrics.");
+        }
+
+        if (!cancelled) {
+          setPeriodDataState(setOverviewDataByPeriod, period, overviewPayload);
+          setPeriodLoadingState(setOverviewLoadingByPeriod, period, false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPeriodDataState(setOverviewDataByPeriod, period, null);
+          setPeriodErrorState(setOverviewErrorByPeriod, period, error.message || "Unable to load Overview metrics.");
+          setPeriodLoadingState(setOverviewLoadingByPeriod, period, false);
+        }
+      }
+
+      setPeriodLoadingState(setProductionLoadingByPeriod, period, true);
+      setPeriodErrorState(setProductionErrorByPeriod, period, "");
+
+      try {
+        const productionResponse = await fetch(`/api/dashboard/production?period=${encodeURIComponent(period)}`, {
+          cache: "no-store",
+        });
+        const productionPayload = await readJson(productionResponse);
+        if (!productionResponse.ok) {
+          throw new Error(productionPayload.error || "Unable to load Production dashboard.");
+        }
+
+        if (!cancelled) {
+          setPeriodDataState(setProductionDataByPeriod, period, productionPayload);
+          setPeriodLoadingState(setProductionLoadingByPeriod, period, false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPeriodDataState(setProductionDataByPeriod, period, null);
+          setPeriodErrorState(setProductionErrorByPeriod, period, error.message || "Unable to load Production dashboard.");
+          setPeriodLoadingState(setProductionLoadingByPeriod, period, false);
+        }
+      }
+    }
+
+    void loadOverviewSectionForPeriod();
     return () => {
       cancelled = true;
     };
-  }, [includeNewShowsPod]);
+  }, [activeView, editorialPeriod, includeNewShowsPod]);
 
   useEffect(() => {
-    let cancelled = false;
+    if (activeView !== "leadership-overview") {
+      return undefined;
+    }
 
-    async function loadLeadershipOverviewSections() {
-      const nextLoadingState = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, true]));
-      setLeadershipOverviewLoadingByPeriod(nextLoadingState);
-      setLeadershipOverviewErrorByPeriod({});
+    let cancelled = false;
+    const period = editorialPeriod;
+
+    async function loadLeadershipOverviewForPeriod() {
+      setPeriodLoadingState(setLeadershipOverviewLoadingByPeriod, period, true);
+      setPeriodErrorState(setLeadershipOverviewErrorByPeriod, period, "");
 
       try {
-        const response = await fetch("/api/dashboard/leadership-overview", { cache: "no-store" });
+        const response = await fetch(`/api/dashboard/leadership-overview?period=${encodeURIComponent(period)}`, {
+          cache: "no-store",
+        });
         const payload = await readJson(response);
         if (!response.ok) {
           throw new Error(payload.error || "Unable to load Overview.");
         }
 
         if (!cancelled) {
-          const nextData = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, payload]));
-          const nextLoading = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, false]));
-          setLeadershipOverviewDataByPeriod(nextData);
-          setLeadershipOverviewErrorByPeriod({});
-          setLeadershipOverviewLoadingByPeriod(nextLoading);
+          setPeriodDataState(setLeadershipOverviewDataByPeriod, period, payload);
+          setPeriodLoadingState(setLeadershipOverviewLoadingByPeriod, period, false);
         }
       } catch (error) {
         if (!cancelled) {
-          const nextData = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, null]));
-          const nextLoading = Object.fromEntries(OVERVIEW_PERIODS.map((period) => [period, false]));
-          const nextErrors = Object.fromEntries(
-            OVERVIEW_PERIODS.map((period) => [period, error?.message || "Unable to load Overview."])
-          );
-          setLeadershipOverviewDataByPeriod(nextData);
-          setLeadershipOverviewErrorByPeriod(nextErrors);
-          setLeadershipOverviewLoadingByPeriod(nextLoading);
+          setPeriodDataState(setLeadershipOverviewDataByPeriod, period, null);
+          setPeriodErrorState(setLeadershipOverviewErrorByPeriod, period, error?.message || "Unable to load Overview.");
+          setPeriodLoadingState(setLeadershipOverviewLoadingByPeriod, period, false);
         }
       }
     }
 
-    void loadLeadershipOverviewSections();
+    void loadLeadershipOverviewForPeriod();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeView, editorialPeriod]);
 
   useEffect(() => {
+    if (activeView !== "pod-wise" || podWiseView !== "performance") {
+      return undefined;
+    }
+    if (competitionData) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     async function loadCompetition() {
+      setCompetitionLoading(true);
       try {
         const response = await fetch("/api/dashboard/competition", { cache: "no-store" });
         const payload = await readJson(response);
@@ -3551,7 +3493,7 @@ export default function UnifiedOpsApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeView, podWiseView]);
 
   useEffect(() => {
     if (activeView !== "pod-wise" || podWiseView !== "tasks") {
@@ -3784,12 +3726,19 @@ export default function UnifiedOpsApp() {
   }
 
   useEffect(() => {
+    if (activeView !== "production" && activeView !== "details") {
+      return undefined;
+    }
+    if (acdMetricsData) {
+      return undefined;
+    }
+
     const cancelState = { cancelled: false };
     void requestAcdMetrics(cancelState);
     return () => {
       cancelState.cancelled = true;
     };
-  }, []);
+  }, [activeView, acdMetricsData]);
 
   useEffect(() => {
     if (!notice) {
@@ -4024,9 +3973,9 @@ export default function UnifiedOpsApp() {
                     </div>
                   </div>
                   <LeadershipOverviewContent
-                    leadershipOverviewDataByPeriod={leadershipOverviewDataByPeriod}
-                    leadershipOverviewLoadingByPeriod={leadershipOverviewLoadingByPeriod}
-                    leadershipOverviewErrorByPeriod={leadershipOverviewErrorByPeriod}
+                    leadershipOverviewData={leadershipOverviewDataByPeriod?.[editorialPeriod]}
+                    leadershipOverviewLoading={leadershipOverviewLoadingByPeriod?.[editorialPeriod]}
+                    leadershipOverviewError={leadershipOverviewErrorByPeriod?.[editorialPeriod]}
                     onNavigate={setActiveView}
                   />
                 </div>

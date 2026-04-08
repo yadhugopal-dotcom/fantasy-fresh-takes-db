@@ -9,7 +9,7 @@ import {
   isAnalyticsEligibleProductionType,
 } from "../../../../lib/live-tab.js";
 import { matchAngleName } from "../../../../lib/fuzzy-match.js";
-import { getWeekSelection } from "../../../../lib/week-view.js";
+import { formatWeekRangeLabel, getWeekSelection, normalizeWeekView } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +73,12 @@ function getTimeParts(dateValue) {
     monthLabel: getMonthLabel(monthKey),
     weekInMonth,
   };
+}
+
+function isDateWithinWeek(dateValue, weekSelection) {
+  const primaryDate = normalizeText(dateValue);
+  if (!primaryDate) return false;
+  return primaryDate >= weekSelection.weekStart && primaryDate <= weekSelection.weekEnd;
 }
 
 function categorizeIdeationStatus(statusLabel) {
@@ -413,8 +419,7 @@ function buildFullGenAiRows(rows) {
     .filter((row) => row.monthKey && row.weekInMonth);
 }
 
-function buildCurrentWeekUpdateRows(beatRows, workflowRows) {
-  const currentWeek = getWeekSelection("current");
+function buildCurrentWeekUpdateRows(beatRows, workflowRows, weekSelection) {
   const grouped = new Map();
 
   const ensureRow = (podLeadName, writerName) => {
@@ -435,12 +440,12 @@ function buildCurrentWeekUpdateRows(beatRows, workflowRows) {
     return grouped.get(key);
   };
 
-  for (const beat of beatRows.filter((row) => row.primaryDate >= currentWeek.weekStart && row.primaryDate <= currentWeek.weekEnd)) {
+  for (const beat of beatRows.filter((row) => isDateWithinWeek(row.primaryDate, weekSelection))) {
     const bestMatch = getBestWorkflowMatch(findWorkflowMatches(beat, workflowRows));
     ensureRow(bestMatch?.podLeadName || beat.podLeadName, bestMatch?.writerName).beats += 1;
   }
 
-  for (const workflow of workflowRows.filter((row) => row.stageDate >= currentWeek.weekStart && row.stageDate <= currentWeek.weekEnd)) {
+  for (const workflow of workflowRows.filter((row) => isDateWithinWeek(row.stageDate, weekSelection))) {
     const entry = ensureRow(workflow.podLeadName, workflow.writerName);
     if (workflow.stageKey === "editorial" || workflow.stageKey === "editorial_review") entry.editorial += 1;
     if (workflow.stageKey === "ready_for_production") entry.readyForProduction += 1;
@@ -453,7 +458,10 @@ function buildCurrentWeekUpdateRows(beatRows, workflowRows) {
   );
 }
 
-export async function GET() {
+export async function GET(request) {
+  const period = normalizeWeekView(new URL(request.url).searchParams.get("period") || "current");
+  const weekSelection = getWeekSelection(period);
+
   try {
     const [ideationResult, editorialResult, readyResult, productionResult, liveResult, analyticsResult] = await Promise.all([
       fetchIdeationTabRows(),
@@ -471,15 +479,23 @@ export async function GET() {
       productionRows: productionResult?.rows || [],
       liveRows: liveResult?.rows || [],
     });
-    const approvedMatchedRows = buildApprovedMatchedRows(beatRows, workflowRows);
-    const fullGenAiRows = buildFullGenAiRows(analyticsResult?.rows || []);
-    const currentWeekUpdateRows = buildCurrentWeekUpdateRows(beatRows, workflowRows);
+    const scopedBeatRows = beatRows.filter((row) => isDateWithinWeek(row.primaryDate, weekSelection));
+    const scopedWorkflowRows = workflowRows.filter((row) => isDateWithinWeek(row.stageDate, weekSelection));
+    const approvedMatchedRows = buildApprovedMatchedRows(scopedBeatRows, workflowRows);
+    const fullGenAiRows = buildFullGenAiRows(analyticsResult?.rows || []).filter((row) =>
+      isDateWithinWeek(row.primaryDate, weekSelection)
+    );
+    const currentWeekUpdateRows = buildCurrentWeekUpdateRows(beatRows, workflowRows, weekSelection);
 
     return NextResponse.json({
       ok: true,
-      filters: buildFilterOptions(beatRows),
-      beatRows,
-      workflowRows,
+      period,
+      selectedWeekKey: weekSelection.weekKey,
+      selectedWeekRangeLabel: formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd),
+      confidenceNote: "This overview is intentionally scoped to a single week. Longer periods can reduce confidence because stages shift across weeks.",
+      filters: buildFilterOptions(scopedBeatRows),
+      beatRows: scopedBeatRows,
+      workflowRows: scopedWorkflowRows,
       approvedMatchedRows,
       fullGenAiRows,
       currentWeekUpdateRows,

@@ -1373,6 +1373,14 @@ select {
   letter-spacing: 0.04em;
 }
 
+.overview-confidence-note {
+  max-width: 300px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .overview-flow-section {
   display: grid;
   gap: 14px;
