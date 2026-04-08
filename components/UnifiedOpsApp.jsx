@@ -20,7 +20,7 @@ import AnalyticsContent from "./views/AnalyticsView.jsx";
 import PodWiseContent, { PodTasksContent } from "./views/PodWiseView.jsx";
 import BeatsPerformanceContent from "./views/BeatsPerformanceView.jsx";
 import ProductionContent from "./views/ProductionView.jsx";
-import { PlannerErrorBoundary, DateRangeControls } from "./views/shared.jsx";
+import { PlannerErrorBoundary } from "./views/shared.jsx";
 
 // ─── Shared utilities ─────────────────────────────────────────────────────────
 import {
@@ -229,6 +229,32 @@ export default function UnifiedOpsApp() {
   const [beatsPerformanceData, setBeatsPerformanceData] = useState(null);
   const [beatsPerformanceLoading, setBeatsPerformanceLoading] = useState(false);
   const [beatsPerformanceError, setBeatsPerformanceError] = useState("");
+  const normalizedHeaderRange = useMemo(
+    () => buildDateRangeSelection({ ...dashboardDateRange, minDate: MIN_DASHBOARD_DATE }),
+    [dashboardDateRange]
+  );
+  const headerSupportsDateRange =
+    activeView === "overview" ||
+    activeView === "leadership-overview" ||
+    activeView === "pod-wise" ||
+    activeView === "analytics";
+  const headerDateRangeDisabled =
+    (activeView === "overview" && overviewLoading) ||
+    (activeView === "leadership-overview" && leadershipOverviewLoading) ||
+    (activeView === "pod-wise" && competitionLoading) ||
+    (activeView === "analytics" && analyticsLoading && !analyticsData);
+  const lastWeekQuickRange = useMemo(
+    () =>
+      buildDateRangeSelection({
+        startDate: getWeekSelection("last").weekStart,
+        endDate: getWeekSelection("last").weekEnd,
+        minDate: MIN_DASHBOARD_DATE,
+      }),
+    []
+  );
+  const isLastWeekSelected =
+    normalizedHeaderRange.startDate === lastWeekQuickRange.startDate &&
+    normalizedHeaderRange.endDate === lastWeekQuickRange.endDate;
 
   const setPeriodLoadingState = (setter, period, value) => {
     setter((current) => ({ ...current, [period]: value }));
@@ -823,25 +849,76 @@ export default function UnifiedOpsApp() {
             <div className="app-topbar-copy">
               <h1 className="app-topbar-title">{activeViewLabelMap[activeView] || "Dashboard"}</h1>
             </div>
-
-            <label className="theme-switch" aria-label="Toggle dark mode">
-              <span className="theme-switch-label">{themeMode === "dark" ? "Dark" : "Light"}</span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={themeMode === "dark"}
-                onChange={(event) => setThemeMode(event.target.checked ? "dark" : "light")}
-              />
-              <span className="theme-switch-track" aria-hidden="true">
-                <span className="theme-switch-thumb" />
-              </span>
-            </label>
+            <div className="app-topbar-right">
+              {headerSupportsDateRange ? (
+                <div className="app-topbar-range" data-share-ignore="true">
+                  <button
+                    type="button"
+                    className={`app-topbar-quick-btn${isLastWeekSelected ? " is-active" : ""}`}
+                    disabled={headerDateRangeDisabled}
+                    onClick={() => setDashboardDateRange(lastWeekQuickRange)}
+                  >
+                    Last week
+                  </button>
+                  <label className="app-topbar-date-field">
+                    <span className="app-topbar-date-label">Start date</span>
+                    <input
+                      className="app-topbar-date-input"
+                      type="date"
+                      min={MIN_DASHBOARD_DATE}
+                      max={normalizedHeaderRange.endDate}
+                      value={normalizedHeaderRange.startDate}
+                      disabled={headerDateRangeDisabled}
+                      onChange={(event) =>
+                        setDashboardDateRange((current) =>
+                          buildDateRangeSelection({
+                            startDate: event.target.value,
+                            endDate: current?.endDate || normalizedHeaderRange.endDate,
+                            minDate: MIN_DASHBOARD_DATE,
+                          })
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="app-topbar-date-field">
+                    <span className="app-topbar-date-label">End date</span>
+                    <input
+                      className="app-topbar-date-input"
+                      type="date"
+                      min={normalizedHeaderRange.startDate || MIN_DASHBOARD_DATE}
+                      value={normalizedHeaderRange.endDate}
+                      disabled={headerDateRangeDisabled}
+                      onChange={(event) =>
+                        setDashboardDateRange((current) =>
+                          buildDateRangeSelection({
+                            startDate: current?.startDate || normalizedHeaderRange.startDate,
+                            endDate: event.target.value,
+                            minDate: MIN_DASHBOARD_DATE,
+                          })
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              ) : null}
+              <label className="theme-switch" aria-label="Toggle dark mode">
+                <span className="theme-switch-label">{themeMode === "dark" ? "Dark" : "Light"}</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={themeMode === "dark"}
+                  onChange={(event) => setThemeMode(event.target.checked ? "dark" : "light")}
+                />
+                <span className="theme-switch-track" aria-hidden="true">
+                  <span className="theme-switch-thumb" />
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="ops-shell">
             {activeView === "leadership-overview" ? (
               <div className="section-shell">
-                <DateRangeControls value={dashboardDateRange} onChange={setDashboardDateRange} disabled={leadershipOverviewLoading} />
                 <LeadershipOverviewContent
                   leadershipOverviewData={leadershipOverviewData}
                   leadershipOverviewLoading={leadershipOverviewLoading}
@@ -863,7 +940,6 @@ export default function UnifiedOpsApp() {
                     />
                     Include new shows POD
                   </label>
-                  <DateRangeControls value={dashboardDateRange} onChange={setDashboardDateRange} disabled={overviewLoading} />
                 </div>
                 <OverviewContent
                   overviewData={overviewData}
@@ -879,8 +955,7 @@ export default function UnifiedOpsApp() {
 
             {activeView === "pod-wise" ? (
               <div className="section-shell">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-                  <DateRangeControls value={dashboardDateRange} onChange={setDashboardDateRange} disabled={competitionLoading} />
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
                   <div className="week-toggle-group">
                     {[
                       { id: "performance", label: "Performance" },
@@ -935,9 +1010,6 @@ export default function UnifiedOpsApp() {
 
             {activeView === "analytics" ? (
               <div className="section-shell">
-                <div className="section-toolbar">
-                  <DateRangeControls value={dashboardDateRange} onChange={setDashboardDateRange} disabled={analyticsLoading && !analyticsData} />
-                </div>
                 <AnalyticsContent
                   analyticsData={analyticsData}
                   analyticsLoading={analyticsLoading}

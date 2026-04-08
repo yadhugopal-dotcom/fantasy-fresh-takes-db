@@ -38,23 +38,19 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const selectedRangeLabel = overviewData?.selectedWeekRangeLabel || "";
 
   const countByStatus = (rows, statusCategory) => rows.filter((row) => row.statusCategory === statusCategory).length;
-  const totalBeats = scopedBeatRows.length;
   const approvedBeats = countByStatus(scopedBeatRows, "approved");
   const reviewPendingBeats = countByStatus(scopedBeatRows, "review_pending");
   const iterateBeats = countByStatus(scopedBeatRows, "iterate");
   const abandonedBeats = countByStatus(scopedBeatRows, "abandoned");
-  const deliveredBeats = approvedBeats;
 
   const deltaMetaFor = (currentValue, previousValue) => {
     return { text: "Selected date range", color: "var(--subtle)" };
   };
 
-  const totalBeatsDelta = deltaMetaFor(totalBeats, previousBeatRows.length);
   const approvedBeatsDelta = deltaMetaFor(approvedBeats, countByStatus(previousBeatRows, "approved"));
   const reviewPendingDelta = deltaMetaFor(reviewPendingBeats, countByStatus(previousBeatRows, "review_pending"));
   const iterateDelta = deltaMetaFor(iterateBeats, countByStatus(previousBeatRows, "iterate"));
   const abandonedDelta = deltaMetaFor(abandonedBeats, countByStatus(previousBeatRows, "abandoned"));
-  const deliveredDelta = deltaMetaFor(deliveredBeats, countByStatus(previousBeatRows, "approved"));
 
   const buildOutputRows = () => {
     const grouped = new Map();
@@ -218,15 +214,13 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             <div className="overview-section-kicker">Section 1</div>
             <div className="overview-section-title">Beats</div>
           </div>
-          <div className="overview-section-note">How many are in play, and how many actually converted in the selected range.</div>
+          <div className="overview-section-note">Readiness view: focus on approval and blockers for the selected range.</div>
         </div>
         <div className="metric-grid four-col">
-          {renderLinkMetricCard({ label: "Total Beats", value: overviewLoading ? "..." : formatMetricValue(totalBeats), delta: totalBeatsDelta, onClick: () => onNavigate?.("beats-performance") })}
           {renderLinkMetricCard({ label: "Approved Beats", value: overviewLoading ? "..." : formatMetricValue(approvedBeats), delta: approvedBeatsDelta, onClick: () => onNavigate?.("beats-performance") })}
           {renderLinkMetricCard({ label: "Review Pending", value: overviewLoading ? "..." : formatMetricValue(reviewPendingBeats), delta: reviewPendingDelta, onClick: () => onNavigate?.("beats-performance") })}
           {renderLinkMetricCard({ label: "Iterate", value: overviewLoading ? "..." : formatMetricValue(iterateBeats), delta: iterateDelta, onClick: () => onNavigate?.("beats-performance") })}
           {renderLinkMetricCard({ label: "Abandoned", value: overviewLoading ? "..." : formatMetricValue(abandonedBeats), delta: abandonedDelta, onClick: () => onNavigate?.("beats-performance") })}
-          {renderLinkMetricCard({ label: "Delivered Beats", value: overviewLoading ? "..." : formatMetricValue(deliveredBeats), delta: deliveredDelta, onClick: () => onNavigate?.("beats-performance") })}
         </div>
       </section>
 
