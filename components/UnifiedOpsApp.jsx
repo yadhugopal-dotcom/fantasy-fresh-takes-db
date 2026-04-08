@@ -48,6 +48,8 @@ const ANALYTICS_LEGEND_FALLBACK = [
   { label: "Testing / Drop", tone: "testing-drop" },
   { label: "Metric not meeting", tone: "metric-miss" },
 ];
+const BEATS_PERFORMANCE_CLIENT_CACHE_KEY = "beats-performance-dashboard-v1";
+const BEATS_PERFORMANCE_CLIENT_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 
 function formatDateLabel(value) {
   if (!value) return "-";
@@ -3047,18 +3049,40 @@ export default function UnifiedOpsApp() {
     if (activeView !== "beats-performance") {
       return undefined;
     }
-    if (beatsPerformanceData) {
-      return undefined;
-    }
 
     let cancelled = false;
 
     async function loadBeatsPerformance() {
-      setBeatsPerformanceLoading(true);
-      setBeatsPerformanceError("");
+      let hasCachedPayload = false;
 
       try {
-        const response = await fetch("/api/dashboard/beats-performance", { cache: "no-store" });
+        const cachedPayload = window.localStorage.getItem(BEATS_PERFORMANCE_CLIENT_CACHE_KEY);
+        if (cachedPayload) {
+          const parsedCache = JSON.parse(cachedPayload);
+          if (
+            parsedCache &&
+            typeof parsedCache === "object" &&
+            parsedCache.payload &&
+            Number.isFinite(parsedCache.savedAt) &&
+            Date.now() - parsedCache.savedAt < BEATS_PERFORMANCE_CLIENT_CACHE_TTL_MS
+          ) {
+            hasCachedPayload = true;
+            if (!cancelled) {
+              setBeatsPerformanceData(parsedCache.payload);
+              setBeatsPerformanceError("");
+              setBeatsPerformanceLoading(false);
+            }
+          }
+        }
+      } catch {}
+
+      if (!hasCachedPayload) {
+        setBeatsPerformanceLoading(true);
+        setBeatsPerformanceError("");
+      }
+
+      try {
+        const response = await fetch("/api/dashboard/beats-performance");
         const payload = await readJson(response);
         if (!response.ok || payload.ok === false) {
           throw new Error(payload.error || "Unable to load beats performance dashboard.");
@@ -3066,11 +3090,25 @@ export default function UnifiedOpsApp() {
 
         if (!cancelled) {
           setBeatsPerformanceData(payload);
+          setBeatsPerformanceError("");
+          setBeatsPerformanceLoading(false);
         }
+
+        try {
+          window.localStorage.setItem(
+            BEATS_PERFORMANCE_CLIENT_CACHE_KEY,
+            JSON.stringify({
+              savedAt: Date.now(),
+              payload,
+            })
+          );
+        } catch {}
       } catch (error) {
         if (!cancelled) {
-          setBeatsPerformanceData(null);
-          setBeatsPerformanceError(error.message || "Unable to load beats performance dashboard.");
+          if (!hasCachedPayload) {
+            setBeatsPerformanceData(null);
+            setBeatsPerformanceError(error.message || "Unable to load beats performance dashboard.");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -3083,7 +3121,7 @@ export default function UnifiedOpsApp() {
     return () => {
       cancelled = true;
     };
-  }, [activeView, beatsPerformanceData]);
+  }, [activeView]);
 
   useEffect(() => {
     if (activeView !== "analytics") {
