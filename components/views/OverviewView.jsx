@@ -163,6 +163,7 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
   const unavailableMetricValue = overviewError ? "-" : null;
   const tatSummary = overviewData?.tatSummary || {};
   const tatDays = tatSummary?.averageTatDays;
+  const [podSectionOpen, setPodSectionOpen] = useState(true);
 
   const beatsCount = overviewData?.plannerBeatCount ?? 0;
   const beatsTarget = 25;
@@ -172,11 +173,24 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
   return (
     <div className="section-stack">
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>POD throughput ranking</div>
-        <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
-          Ranked by last week scripts pushed to production (Fresh Takes + GA/GI + approved beats), with writer drilldown.
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: podSectionOpen ? 8 : 0 }}>
+          <button
+            type="button"
+            className="as-link"
+            onClick={() => setPodSectionOpen((v) => !v)}
+            style={{ padding: 0, border: "none", background: "transparent", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            {podSectionOpen ? "▾" : "▸"} POD throughput ranking
+          </button>
         </div>
-        <EditorialPodThroughputTable rows={Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : []} />
+        {podSectionOpen && (
+          <>
+            <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+              Ranked by last week scripts pushed to production (Fresh Takes + GA/GI + approved beats), with writer drilldown.
+            </div>
+            <EditorialPodThroughputTable rows={Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : []} />
+          </>
+        )}
       </div>
       <hr className="section-divider" />
       <div className="metric-grid three-col">
