@@ -33,6 +33,25 @@ function detectAssetTypeFromCode(assetCode) {
   return "OTHER";
 }
 
+function countWeekdaysInRange(startDate, endDate) {
+  const start = String(startDate || "");
+  const end = String(endDate || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return 5;
+  }
+  const from = new Date(`${start}T00:00:00Z`);
+  const to = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) {
+    return 5;
+  }
+  let count = 0;
+  for (const day = new Date(from); day <= to; day.setUTCDate(day.getUTCDate() + 1)) {
+    const dow = day.getUTCDay();
+    if (dow !== 0 && dow !== 6) count += 1;
+  }
+  return Math.max(1, count);
+}
+
 function resolveFocusPodLabel(podLeadName) {
   const normalized = normalizePodFilterKey(podLeadName || "");
   for (const pod of FOCUS_POD_LEADS) {
@@ -189,6 +208,10 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const allPodsExpanded =
     outputData.podRows.length > 0 &&
     outputData.podRows.every((row) => Boolean(expandedPods[row.podLeadName]));
+  const weekdayCount = useMemo(
+    () => countWeekdaysInRange(overviewData?.weekStart, overviewData?.weekEnd),
+    [overviewData?.weekStart, overviewData?.weekEnd]
+  );
 
   const throughputByCd = useMemo(() => {
     const cdMap = new Map();
@@ -249,11 +272,13 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             const liveCount = acdEntry.liveAssets.size;
             const productionMinutes = Number((productionCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
             const liveMinutes = Number((liveCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
+            const totalMinutes = Number((productionMinutes + liveMinutes).toFixed(1));
             return {
               acdName: acdEntry.acdName,
               productionMinutes,
               liveMinutes,
-              totalMinutes: Number((productionMinutes + liveMinutes).toFixed(1)),
+              totalMinutes,
+              minutesPerDay: Number((totalMinutes / Math.max(1, weekdayCount)).toFixed(1)),
             };
           })
           .sort((a, b) => b.totalMinutes - a.totalMinutes || a.acdName.localeCompare(b.acdName));
@@ -262,16 +287,18 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
         const liveCount = cdEntry.liveAssets.size;
         const productionMinutes = Number((productionCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
         const liveMinutes = Number((liveCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
+        const totalMinutes = Number((productionMinutes + liveMinutes).toFixed(1));
         return {
           cdName: cdEntry.cdName,
           productionMinutes,
           liveMinutes,
-          totalMinutes: Number((productionMinutes + liveMinutes).toFixed(1)),
+          totalMinutes,
+          minutesPerDay: Number((totalMinutes / Math.max(1, weekdayCount)).toFixed(1)),
           acdRows,
         };
       })
       .sort((a, b) => b.totalMinutes - a.totalMinutes || a.cdName.localeCompare(b.cdName));
-  }, [scopedWorkflowRows, section3AssetTypes]);
+  }, [scopedWorkflowRows, section3AssetTypes, weekdayCount]);
   const allCdsExpanded =
     throughputByCd.length > 0 &&
     throughputByCd.every((row) => Boolean(expandedCds[row.cdName]));
@@ -525,6 +552,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                   <th>Production (min)</th>
                   <th>Live (min)</th>
                   <th>Total (min)</th>
+                  <th>Mins/Day</th>
                 </tr>
               </thead>
               <tbody>
@@ -556,6 +584,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                         <td>{formatNumber(cdRow.productionMinutes)}</td>
                         <td>{formatNumber(cdRow.liveMinutes)}</td>
                         <td>{formatNumber(cdRow.totalMinutes)}</td>
+                        <td>{formatNumber(cdRow.minutesPerDay)}</td>
                       </tr>
                     );
 
@@ -566,6 +595,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                             <td>{formatNumber(acdRow.productionMinutes)}</td>
                             <td>{formatNumber(acdRow.liveMinutes)}</td>
                             <td>{formatNumber(acdRow.totalMinutes)}</td>
+                            <td>{formatNumber(acdRow.minutesPerDay)}</td>
                           </tr>
                         ))
                       : [];
@@ -574,14 +604,14 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                   })
                 ) : (
                   <tr>
-                    <td colSpan="4">No throughput rows available for this filter yet.</td>
+                    <td colSpan="5">No throughput rows available for this filter yet.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
           <div className="overview-section-note" style={{ marginTop: 8 }}>
-            Click a CD row to expand ACD-level throughput.
+            Click a CD row to expand ACD-level throughput. Mins/Day = Total minutes / {weekdayCount} weekday(s) in selected range.
           </div>
         </div>
       </section>
