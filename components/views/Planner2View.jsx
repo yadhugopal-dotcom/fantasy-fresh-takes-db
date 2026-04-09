@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { DAYS, STAGE_MAP } from "../../lib/tracker-data.js";
 import { EmptyState, ShareablePanel, formatDateTimeLabel, formatNumber } from "./shared.jsx";
 
-const GRID_TEMPLATE_COLUMNS = "80px 130px 420px repeat(7, 1fr)";
 const POD_COLOR_MAP = {
   Berman: "#1e3a5f",
   Roth: "#5b21b6",
@@ -13,13 +12,7 @@ const POD_COLOR_MAP = {
   Woodward: "#0f766e",
   Unmapped: "#334155",
 };
-
-function toneClassFromLag(laggingCount) {
-  const value = Number(laggingCount || 0);
-  if (value >= 5) return "tone-danger";
-  if (value >= 2) return "tone-warning";
-  return "tone-positive";
-}
+const POD_ORDER = ["Woodward", "Berman", "Roth", "Lee", "Gilatar", "Unmapped"];
 
 function formatPlanner2DayLabel(dateValue) {
   const date = new Date(`${dateValue}T00:00:00Z`);
@@ -100,7 +93,6 @@ export default function Planner2Content({
   onShare,
   copyingSection,
 }) {
-  const totals = planner2Data?.totals || {};
   const ownerRows = Array.isArray(planner2Data?.ownerRows) ? planner2Data.ownerRows : [];
   const plannerRows = Array.isArray(planner2Data?.plannerRows) ? planner2Data.plannerRows : [];
   const dateColumns = Array.isArray(planner2Data?.dateColumns) ? planner2Data.dateColumns : [];
@@ -115,9 +107,34 @@ export default function Planner2Content({
         completedTaskCount: Number(row?.completedTaskCount || 0),
         laggingTaskCount: Number(row?.laggingTaskCount || 0),
         days: weekDates.map((date) => stageIdForPlannerCell(row?.dayMap?.[date])),
+        writerRole:
+          String(row?.ownerName || "").trim().toLowerCase() === String(row?.podLeadName || "").trim().toLowerCase()
+            ? "Pod Lead"
+            : "Writer",
       })),
     [plannerRows, weekDates]
   );
+  const groupedGanttRows = useMemo(() => {
+    const podMap = new Map();
+    for (const row of ganttRows) {
+      const pod = row.podLeadName || "Unmapped";
+      if (!podMap.has(pod)) podMap.set(pod, []);
+      podMap.get(pod).push(row);
+    }
+    return Array.from(podMap.entries())
+      .sort((a, b) => {
+        const ia = POD_ORDER.indexOf(a[0]);
+        const ib = POD_ORDER.indexOf(b[0]);
+        const aa = ia === -1 ? 999 : ia;
+        const bb = ib === -1 ? 999 : ib;
+        if (aa !== bb) return aa - bb;
+        return a[0].localeCompare(b[0]);
+      })
+      .map(([pod, rows]) => ({
+        pod,
+        rows: [...rows].sort((x, y) => x.ownerName.localeCompare(y.ownerName)),
+      }));
+  }, [ganttRows]);
 
   if (planner2Loading && !planner2Data) {
     return <EmptyState text="Loading Planner2..." />;
@@ -152,151 +169,71 @@ export default function Planner2Content({
           </div>
         </div>
 
-        <div className="metrics-grid" style={{ marginBottom: 12 }}>
-          <div className="metric-card">
-            <div className="metric-label">Committed tasks</div>
-            <div className="metric-value">{formatNumber(totals.committedTaskCount || 0)}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-label">Completed markers</div>
-            <div className="metric-value">{formatNumber(totals.completedTaskCount || 0)}</div>
-          </div>
-          <div className={`metric-card ${toneClassFromLag(totals.laggingTaskCount)}`}>
-            <div className="metric-label">Lagging</div>
-            <div className="metric-value">{formatNumber(totals.laggingTaskCount || 0)}</div>
-          </div>
-        </div>
-
         <div className="table-wrap">
           {ganttRows.length > 0 ? (
-            <div
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e0d5c7",
-                borderRadius: 14,
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
-                overflow: "auto",
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
-                  minWidth: 940,
-                  borderBottom: "1px solid #e0d5c7",
-                }}
-              >
-                {["Pod", "Writer", "Beats"].map((label) => (
-                  <div key={label} style={{ fontSize: 11, fontWeight: 700, color: "#8c847d", letterSpacing: "0.08em", textTransform: "uppercase", padding: "8px 6px", background: "#faf7f3", borderRight: "1px solid #e0d5c7", display: "flex", alignItems: "center" }}>
-                    {label}
-                  </div>
-                ))}
-                {weekDates.map((date, index) => (
-                  <div
-                    key={date}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#8c847d",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      padding: "8px 6px",
-                      textAlign: "center",
-                      justifyContent: "center",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1,
-                      background: index === 0 ? "#c4704b" : "#faf7f3",
-                      borderRight: "1px solid #e0d5c7",
-                    }}
-                  >
-                    <span style={{ color: index === 0 ? "#fff" : undefined }}>{DAYS[index] || "-"}</span>
-                    <span style={{ fontSize: 9, opacity: 0.85, color: index === 0 ? "#fff" : undefined }}>
-                      {formatPlanner2DayLabel(date)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {ganttRows.map((row, rowIndex) => (
-                <div
-                  key={`${row.podLeadName}-${row.ownerName}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
-                    minWidth: 940,
-                    minHeight: 34,
-                    background: rowIndex % 2 === 0 ? "#ffffff" : "#faf7f3",
-                  }}
-                >
-                  <div
-                    style={{
-                      background: POD_COLOR_MAP[row.podLeadName] || POD_COLOR_MAP.Unmapped,
-                      color: "#fff",
-                      fontWeight: 700,
-                      fontSize: 13,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      padding: "6px 4px",
-                      borderRight: "1px solid rgba(255,255,255,0.15)",
-                      borderBottom: "1px solid #cbd5e1",
-                    }}
-                  >
-                    {row.podLeadName}
-                  </div>
-                  <div
-                    style={{
-                      padding: "3px 6px",
-                      background: "#faf7f3",
-                      borderRight: "1px solid #e0d5c7",
-                      display: "flex",
-                      alignItems: "center",
-                      borderBottom: "1px solid #cbd5e1",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {row.ownerName || "-"}
-                  </div>
-                  <div
-                    style={{
-                      padding: "3px 6px",
-                      borderRight: "1px solid #e0d5c7",
-                      display: "flex",
-                      alignItems: "center",
-                      borderBottom: "1px solid #cbd5e1",
-                      color: "#6b6560",
-                    }}
-                  >
-                    {`Committed ${formatNumber(row.committedTaskCount)} · Done ${formatNumber(row.completedTaskCount)} · Lag ${formatNumber(row.laggingTaskCount)}`}
-                  </div>
-                  {DAYS.map((_, dayIndex) => {
-                    const stageId = row.days[dayIndex] || null;
-                    const previousStage = dayIndex > 0 ? row.days[dayIndex - 1] : null;
-                    const nextStage = dayIndex < DAYS.length - 1 ? row.days[dayIndex + 1] : null;
-                    return (
-                      <div
-                        key={`${row.ownerName}-${dayIndex}`}
-                        style={{
-                          position: "relative",
-                          minHeight: 32,
-                          borderRight: dayIndex < DAYS.length - 1 ? "1px solid #f3eadb" : "none",
-                          borderBottom: "1px solid #cbd5e1",
-                          background: dayIndex === 0 ? "rgba(0,106,103,0.05)" : "transparent",
-                        }}
-                      >
-                        <StageBar
-                          stageId={stageId}
-                          isStart={Boolean(stageId && stageId !== previousStage)}
-                          isEnd={Boolean(stageId && stageId !== nextStage)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+            <table className="ops-table overview-table" style={{ minWidth: 940 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 90 }}>Pod</th>
+                  <th style={{ width: 190 }}>Writer</th>
+                  {weekDates.map((date, index) => (
+                    <th key={date} style={{ minWidth: 90, textAlign: "center" }}>
+                      <div>{DAYS[index] || "-"}</div>
+                      <div style={{ fontSize: 10, fontWeight: 500, opacity: 0.8 }}>{formatPlanner2DayLabel(date)}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groupedGanttRows.map((group) =>
+                  group.rows.map((row, rowIndexInPod) => (
+                    <tr key={`${group.pod}-${row.ownerName}`}>
+                      {rowIndexInPod === 0 ? (
+                        <td
+                          rowSpan={group.rows.length}
+                          style={{
+                            background: POD_COLOR_MAP[group.pod] || POD_COLOR_MAP.Unmapped,
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: 15,
+                            textAlign: "center",
+                            verticalAlign: "top",
+                            paddingTop: 18,
+                          }}
+                        >
+                          {group.pod}
+                        </td>
+                      ) : null}
+                      <td style={{ background: "#faf7f3" }}>
+                        <div style={{ fontWeight: 700, fontSize: 18 }}>{row.ownerName || "-"}</div>
+                        <div style={{ color: "var(--subtle)", fontSize: 12 }}>{row.writerRole}</div>
+                      </td>
+                      {DAYS.map((_, dayIndex) => {
+                        const stageId = row.days[dayIndex] || null;
+                        const previousStage = dayIndex > 0 ? row.days[dayIndex - 1] : null;
+                        const nextStage = dayIndex < DAYS.length - 1 ? row.days[dayIndex + 1] : null;
+                        return (
+                          <td
+                            key={`${row.ownerName}-${dayIndex}`}
+                            style={{
+                              position: "relative",
+                              minHeight: 36,
+                              background: dayIndex === 0 ? "rgba(0,106,103,0.05)" : "transparent",
+                            }}
+                          >
+                            <StageBar
+                              stageId={stageId}
+                              isStart={Boolean(stageId && stageId !== previousStage)}
+                              isEnd={Boolean(stageId && stageId !== nextStage)}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           ) : (
             <EmptyState text="No planning rows found for this date range." />
           )}
