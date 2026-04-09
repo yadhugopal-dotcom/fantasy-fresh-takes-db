@@ -1526,11 +1526,16 @@ select {
 }
 
 .overview-genai-success-row {
-  background: color-mix(in srgb, var(--green-bg) 82%, var(--card) 18%);
+  background: #e6f4ea;
 }
 
 .overview-genai-success-row td {
-  background: color-mix(in srgb, var(--green-bg) 82%, var(--card) 18%);
+  background: #e6f4ea;
+}
+
+[data-theme="dark"] .overview-genai-success-row,
+[data-theme="dark"] .overview-genai-success-row td {
+  background: rgba(45, 90, 61, 0.28);
 }
 
 .overview-genai-success-value {
