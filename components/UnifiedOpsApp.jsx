@@ -452,28 +452,64 @@ export default function UnifiedOpsApp() {
       }),
     []
   );
+  const currentWeekQuickRange = useMemo(
+    () =>
+      buildDateRangeSelection({
+        startDate: getWeekSelection("current").weekStart,
+        endDate: getWeekSelection("current").weekEnd,
+        minDate: MIN_DASHBOARD_DATE,
+      }),
+    []
+  );
+  const nextWeekQuickRange = useMemo(
+    () =>
+      buildDateRangeSelection({
+        startDate: getWeekSelection("next").weekStart,
+        endDate: getWeekSelection("next").weekEnd,
+        minDate: MIN_DASHBOARD_DATE,
+      }),
+    []
+  );
   const isLastWeekSelected = dateFilterMode === "last-week";
+  const isCurrentWeekSelected = dateFilterMode === "current-week";
+  const isNextWeekSelected = dateFilterMode === "next-week";
   const isCustomRangeSelected = dateFilterMode === "custom";
 
   useEffect(() => {
-    const isQuickRange =
-      normalizedHeaderRange.startDate === lastWeekQuickRange.startDate &&
-      normalizedHeaderRange.endDate === lastWeekQuickRange.endDate;
+    const quickRanges = [
+      { mode: "last-week", range: lastWeekQuickRange },
+      { mode: "current-week", range: currentWeekQuickRange },
+      { mode: "next-week", range: nextWeekQuickRange },
+    ];
+    const activeQuick = quickRanges.find(
+      ({ range }) =>
+        normalizedHeaderRange.startDate === range.startDate &&
+        normalizedHeaderRange.endDate === range.endDate
+    );
 
-    if (!isQuickRange) {
+    if (!activeQuick) {
       setLastNonQuickRange({
         startDate: normalizedHeaderRange.startDate,
         endDate: normalizedHeaderRange.endDate,
       });
-      if (dateFilterMode === "last-week") {
+      if (dateFilterMode !== "custom") {
         setDateFilterMode("custom");
       }
+      return;
+    }
+
+    if (dateFilterMode !== activeQuick.mode) {
+      setDateFilterMode(activeQuick.mode);
     }
   }, [
     normalizedHeaderRange.startDate,
     normalizedHeaderRange.endDate,
     lastWeekQuickRange.startDate,
     lastWeekQuickRange.endDate,
+    currentWeekQuickRange.startDate,
+    currentWeekQuickRange.endDate,
+    nextWeekQuickRange.startDate,
+    nextWeekQuickRange.endDate,
     dateFilterMode,
   ]);
 
@@ -1240,6 +1276,44 @@ export default function UnifiedOpsApp() {
                   >
                     Last week
                   </button>
+                  {activeView === "planner2" ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`app-topbar-quick-btn${isCurrentWeekSelected ? " is-active" : ""}`}
+                        disabled={headerDateRangeDisabled}
+                        onClick={() => {
+                          if (!isCurrentWeekSelected) {
+                            setLastNonQuickRange({
+                              startDate: normalizedHeaderRange.startDate,
+                              endDate: normalizedHeaderRange.endDate,
+                            });
+                          }
+                          setDateFilterMode("current-week");
+                          setDashboardDateRange(currentWeekQuickRange);
+                        }}
+                      >
+                        Current week
+                      </button>
+                      <button
+                        type="button"
+                        className={`app-topbar-quick-btn${isNextWeekSelected ? " is-active" : ""}`}
+                        disabled={headerDateRangeDisabled}
+                        onClick={() => {
+                          if (!isNextWeekSelected) {
+                            setLastNonQuickRange({
+                              startDate: normalizedHeaderRange.startDate,
+                              endDate: normalizedHeaderRange.endDate,
+                            });
+                          }
+                          setDateFilterMode("next-week");
+                          setDashboardDateRange(nextWeekQuickRange);
+                        }}
+                      >
+                        Next week
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     className={`app-topbar-quick-btn${isCustomRangeSelected ? " is-active" : ""}`}
