@@ -24,6 +24,21 @@ const SECTION3_ASSET_TYPE_LABELS = {
   GU: "Full GenAI",
 };
 const SECTION3_MINUTES_PER_ASSET = 2.5;
+const SECTION3_ALLOWED_NAMES = new Set([
+  "Pauras Hinge",
+  "Ankit D Bagde",
+  "Vivek Anand",
+  "Swagat Karmakar",
+  "Manthan M Kanani",
+  "Hitesh Gawankar",
+  "Priyesh Kava",
+  "Sakshi Nandwani",
+  "Daanish Narayan",
+  "Tanya Singh",
+  "Ankur Saraf",
+  "Umesh Bahuguna",
+  "Varun Thomas",
+]);
 
 function detectAssetTypeFromCode(assetCode) {
   const normalized = String(assetCode || "").trim().toUpperCase();
@@ -60,6 +75,13 @@ function resolveFocusPodLabel(podLeadName) {
     }
   }
   return "";
+}
+
+function sanitizeAllowedOwnerName(value) {
+  const cleaned = String(value || "").trim().replace(/\s+/g, " ");
+  if (!cleaned) return "";
+  if (cleaned.includes(",") || cleaned.includes("&")) return "";
+  return SECTION3_ALLOWED_NAMES.has(cleaned) ? cleaned : "";
 }
 
 export default function LeadershipOverviewContent({ leadershipOverviewData, leadershipOverviewLoading, leadershipOverviewError, onNavigate }) {
@@ -248,10 +270,11 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
     };
 
     for (const row of throughputRows) {
-      const cdName = String(row?.cdName || row?.cd || "Unassigned").trim() || "Unassigned";
-      const acdNames = Array.isArray(row?.acdNames) && row.acdNames.length > 0 ? row.acdNames : ["Unassigned"];
+      const cdName = sanitizeAllowedOwnerName(row?.cdName || row?.cd);
+      const acdNamesRaw = Array.isArray(row?.acdNames) && row.acdNames.length > 0 ? row.acdNames : [];
+      const acdNames = acdNamesRaw.map(sanitizeAllowedOwnerName).filter(Boolean);
       const assetCode = String(row?.assetCode || row?.scriptCode || `${row?.showName}-${row?.beatName}`).trim();
-      if (!assetCode) continue;
+      if (!assetCode || !cdName || acdNames.length === 0) continue;
 
       const cdEntry = ensureCdEntry(cdName);
       if (row.source === "production") cdEntry.productionAssets.add(assetCode);
