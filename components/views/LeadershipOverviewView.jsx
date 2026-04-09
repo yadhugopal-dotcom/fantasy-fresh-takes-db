@@ -92,6 +92,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const [expandedCds, setExpandedCds] = useState({});
   const [section2Mode, setSection2Mode] = useState("custom");
   const [section3AssetTypes, setSection3AssetTypes] = useState(SECTION3_ASSET_TYPE_OPTIONS);
+  const [section4AssetTypes, setSection4AssetTypes] = useState(SECTION3_ASSET_TYPE_OPTIONS);
   const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
   const allBeatRows = Array.isArray(overviewData?.allBeatRows) ? overviewData.allBeatRows : beatRows;
   const workflowRows = Array.isArray(overviewData?.workflowRows) ? overviewData.workflowRows : [];
@@ -99,7 +100,13 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const fullGenAiRows = Array.isArray(overviewData?.fullGenAiRows) ? overviewData.fullGenAiRows : [];
   const scopedBeatRows = beatRows;
   const scopedWorkflowRows = workflowRows;
-  const scopedFullGenAiRows = fullGenAiRows;
+  const scopedFullGenAiRows = useMemo(() => {
+    const selectedTypes = new Set(section4AssetTypes);
+    return fullGenAiRows.filter((row) => {
+      const assetType = detectAssetTypeFromCode(row?.assetCode || "");
+      return selectedTypes.has(assetType);
+    });
+  }, [fullGenAiRows, section4AssetTypes]);
   const selectedRangeLabel = overviewData?.selectedWeekRangeLabel || "";
   const lastWeekSelection = getWeekSelection("last");
   const currentWeekSelection = getWeekSelection("current");
@@ -646,8 +653,30 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
           <div>
             <div className="overview-section-title">Full Gen AI</div>
           </div>
-          <div className="overview-section-note">
-            {overviewLoading ? "Rows: ..." : `Rows: ${formatMetricValue(fullGenAiByBeat.length)}`}
+          <div className="overview-section-actions" style={{ marginLeft: "auto", justifyContent: "flex-end" }}>
+            <label className="toolbar-select" style={{ minWidth: 180 }}>
+              <span>Assets</span>
+              <select
+                multiple
+                value={section4AssetTypes}
+                onChange={(event) => {
+                  const values = Array.from(event.target.selectedOptions).map((option) => option.value);
+                  setSection4AssetTypes(values.length > 0 ? values : SECTION3_ASSET_TYPE_OPTIONS);
+                }}
+              >
+                {SECTION3_ASSET_TYPE_OPTIONS.map((type) => (
+                  <option key={type} value={type}>
+                    {SECTION3_ASSET_TYPE_LABELS[type] || type}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "normal", textTransform: "none", fontWeight: 500 }}>
+                Hold Shift (or Cmd/Ctrl) to multi-select
+              </span>
+            </label>
+            <div className="overview-section-note">
+              {overviewLoading ? "Rows: ..." : `Rows: ${formatMetricValue(fullGenAiByBeat.length)}`}
+            </div>
           </div>
         </div>
         <div className="metric-grid three-col">
