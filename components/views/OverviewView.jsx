@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   MetricCard,
@@ -62,91 +62,166 @@ function getHitRateColor(rate) {
   return "#9f2e2e";
 }
 
-function EditorialPodThroughputTable({ rows = [] }) {
-  const [expandedPods, setExpandedPods] = useState({});
-  const allExpanded = rows.length > 0 && rows.every((row) => Boolean(expandedPods[row.podLeadName]));
+function ScriptTypeBadges({ ftCount = 0, rwLargeCount = 0, rwSmallCount = 0, rwOtherCount = 0, compact = false }) {
+  const rwTotal = rwLargeCount + rwSmallCount + rwOtherCount;
+  const parts = [];
+  if (ftCount > 0) {
+    parts.push(
+      <span key="ft" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#e8f4ea", color: "#2d5a3d", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>FT:{ftCount}</span>
+    );
+  }
+  if (rwLargeCount > 0) {
+    parts.push(
+      <span key="rwl" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#fdf0e6", color: "#c2601e", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW-L:{rwLargeCount}</span>
+    );
+  }
+  if (rwSmallCount > 0) {
+    parts.push(
+      <span key="rws" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#edf2fb", color: "#3b5bdb", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW-S:{rwSmallCount}</span>
+    );
+  }
+  if (rwOtherCount > 0) {
+    parts.push(
+      <span key="rwo" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#f3f0fb", color: "#6741d9", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW:{rwOtherCount}</span>
+    );
+  }
+  if (parts.length === 0 && rwTotal === 0 && ftCount === 0) return null;
+  return <span>{parts}</span>;
+}
+
+function PodThroughputRankingTable({ rows = [], loading = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const [expandedPods, setExpandedPods] = useState(new Set());
+
+  // Auto-expand all pods when data first loads
+  useEffect(() => {
+    if (!loading && safeRows.length > 0) {
+      setExpandedPods(new Set(safeRows.map((p) => p.podLeadName)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  const togglePod = (podName) => {
+    setExpandedPods((prev) => {
+      const next = new Set(prev);
+      if (next.has(podName)) next.delete(podName);
+      else next.add(podName);
+      return next;
+    });
+  };
+
+  const tableRows = [];
+  for (const pod of safeRows) {
+    const beats = Array.isArray(pod.beats) ? pod.beats : [];
+    const isExpanded = expandedPods.has(pod.podLeadName);
+
+    tableRows.push(
+      <tr
+        key={`pod-${pod.podLeadName}`}
+        className="throughput-pod-summary-row"
+        style={{ cursor: "pointer", userSelect: "none" }}
+        onClick={() => togglePod(pod.podLeadName)}
+      >
+        <td style={{ fontWeight: 700 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              fontSize: 10, width: 16, height: 16, display: "inline-flex",
+              alignItems: "center", justifyContent: "center",
+              background: "var(--subtle-bg, #f0ece4)", borderRadius: 3,
+              color: "var(--subtle)", flexShrink: 0,
+            }}>
+              {isExpanded ? "▾" : "▸"}
+            </span>
+            {pod.podLeadName}
+          </span>
+        </td>
+        <td style={{ fontWeight: 700, textAlign: "center" }}>{formatNumber(pod.totalScripts)}</td>
+        <td>
+          <ScriptTypeBadges
+            compact
+            ftCount={pod.ftCount || 0}
+            rwLargeCount={0}
+            rwSmallCount={0}
+            rwOtherCount={pod.rwCount || 0}
+          />
+        </td>
+        <td style={{ color: "var(--subtle)", fontSize: 11 }}>
+          {beats.length} beat{beats.length !== 1 ? "s" : ""}
+        </td>
+      </tr>
+    );
+
+    if (isExpanded) {
+      for (const beat of beats) {
+        tableRows.push(
+          <tr key={`beat-${pod.podLeadName}-${beat.beatName}`} className="throughput-beat-row">
+            <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>
+              {beat.showName ? `${beat.showName} — ` : ""}{beat.beatName}
+            </td>
+            <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 12 }}>
+              {formatNumber(beat.scriptCount)}
+            </td>
+            <td>
+              <ScriptTypeBadges
+                compact
+                ftCount={beat.ftCount || 0}
+                rwLargeCount={beat.rwLargeCount || 0}
+                rwSmallCount={beat.rwSmallCount || 0}
+                rwOtherCount={beat.rwOtherCount || 0}
+              />
+            </td>
+            <td style={{ fontSize: 12 }}>
+              {beat.inIdeation ? (
+                <span style={{ color: "#2d5a3d", fontWeight: 600 }}>✓ Got it</span>
+              ) : (
+                <span style={{ color: "#9f2e2e", fontWeight: 600 }}>⚠️ Not in ideation</span>
+              )}
+            </td>
+          </tr>
+        );
+      }
+    }
+  }
 
   return (
-    <div>
-      <div className="overview-section-actions" style={{ justifyContent: "flex-end", marginBottom: 8 }}>
-        <button
-          type="button"
-          className="ghost-button overview-section-link"
-          onClick={() =>
-            setExpandedPods(
-              allExpanded ? {} : Object.fromEntries(rows.map((row) => [row.podLeadName, true]))
-            )
-          }
-        >
-          {allExpanded ? "Collapse all pods" : "Open POD Wise"}
-        </button>
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>POD throughput ranking</div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        GA/GI assets · date-filtered · FT = Fresh Take · RW = Rework (L=large, S=small) · beat checked against Ideation tab
       </div>
       <div className="table-wrap">
         <table className="ops-table overview-table">
           <thead>
             <tr>
-              <th>POD / Writer</th>
-              <th>LW to Production (GA/GI, approved)</th>
-              <th>This week beats</th>
-              <th>WIP</th>
-              <th>Review with CL</th>
-              <th>On track for next week</th>
-              <th>NW readiness stage</th>
-              <th>Thu status</th>
+              <th>POD / Beat</th>
+              <th style={{ textAlign: "center" }}># Scripts</th>
+              <th>Type</th>
+              <th>Ideation</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length > 0 ? (
-              rows.flatMap((row) => {
-                const isExpanded = Boolean(expandedPods[row.podLeadName]);
-                const podRow = (
-                  <tr key={`pod-${row.podLeadName}`} style={{ fontWeight: 700 }}>
-                    <td>
-                      <button
-                        type="button"
-                        className="as-link"
-                        onClick={() =>
-                          setExpandedPods((current) => ({
-                            ...current,
-                            [row.podLeadName]: !current[row.podLeadName],
-                          }))
-                        }
-                        style={{ padding: 0, border: "none", background: "transparent", fontWeight: 700 }}
-                      >
-                        {isExpanded ? "▾" : "▸"} {row.podLeadName || "-"}
-                      </button>
-                    </td>
-                    <td>{formatMetricValue(row.lwProductionCount)}</td>
-                    <td>{formatMetricValue(row.thisWeekBeatsCount)}</td>
-                    <td>{formatMetricValue(row.wipCount)}</td>
-                    <td>{formatMetricValue(row.reviewWithClCount)}</td>
-                    <td>{formatMetricValue(row.onTrackCount)}</td>
-                    <td>{row.readinessStage || "-"}</td>
-                    <td>{row.thuStatusMessage || "-"}</td>
-                  </tr>
-                );
-
-                const writerRows = isExpanded
-                  ? (Array.isArray(row.writerRows) ? row.writerRows : []).map((writer) => (
-                      <tr key={`writer-${row.podLeadName}-${writer.writerName}`}>
-                        <td style={{ paddingLeft: 34, color: "var(--subtle)" }}>• {writer.writerName || "-"}</td>
-                        <td>{formatMetricValue(writer.lwProductionCount)}</td>
-                        <td>{formatMetricValue(writer.thisWeekBeatsCount)}</td>
-                        <td>{formatMetricValue(writer.wipCount)}</td>
-                        <td>{formatMetricValue(writer.reviewWithClCount)}</td>
-                        <td>{formatMetricValue(writer.onTrackCount)}</td>
-                        <td>{writer.readinessStage || "-"}</td>
-                        <td>-</td>
-                      </tr>
-                    ))
-                  : [];
-
-                return [podRow, ...writerRows];
-              })
+            {loading ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : tableRows.length > 0 ? (
+              tableRows
             ) : (
-              <tr>
-                <td colSpan="8">No POD throughput rows available yet.</td>
-              </tr>
+              <tr><td colSpan="4">No GA/GI scripts found for the selected date range.</td></tr>
             )}
           </tbody>
         </table>
@@ -169,13 +244,6 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
 
   return (
     <div className="section-stack">
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>POD throughput ranking</div>
-        <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
-          Ranked by last week scripts pushed to production (Fresh Takes + GA/GI + approved beats), with writer drilldown.
-        </div>
-        <EditorialPodThroughputTable rows={Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : []} />
-      </div>
       <hr className="section-divider" />
       <div className="metric-grid three-col">
         <MetricCard
@@ -448,10 +516,9 @@ export default function OverviewContent({
   onIncludeNewShowsPodChange,
 }) {
   const notes = buildOverviewNotes({ overviewError, overviewData });
-  const sectionTitle = "Editorial funnel";
-  const contextLine = "What shipped and how it performed across the selected date range.";
   const weekLabel = overviewData?.weekLabel || "";
   const selectionMode = String(overviewData?.selectionMode || "");
+  const podThroughputRows = Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : [];
 
   return (
     <ShareablePanel
@@ -474,10 +541,6 @@ export default function OverviewContent({
           <div key={note} className="warning-note">{note}</div>
         ))}
 
-        <div style={{ fontSize: 14, fontWeight: 500 }}>{sectionTitle}</div>
-        {weekLabel && <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: -10 }}>{weekLabel}</div>}
-        <div style={{ fontSize: 13, color: "var(--subtle)", fontStyle: "italic", marginTop: -8 }}>{contextLine}</div>
-
         {selectionMode === "editorial_funnel" && (
           <OverviewCurrentWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
         )}
@@ -487,6 +550,8 @@ export default function OverviewContent({
         {selectionMode === "planned" && (
           <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
         )}
+
+        <PodThroughputRankingTable rows={podThroughputRows} loading={overviewLoading} />
       </div>
     </ShareablePanel>
   );

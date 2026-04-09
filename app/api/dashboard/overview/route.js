@@ -136,6 +136,32 @@ function makeBeatKey(showName, beatName) {
   return show && beat ? `${show}|${beat}` : "";
 }
 
+// Strip leading articles + punctuation for fuzzy beat matching ("The Thor" ≈ "Thor")
+function fuzzyBeatNormalize(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^(the|a|an)\s+/i, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function makeFuzzyBeatKey(showName, beatName) {
+  const show = fuzzyBeatNormalize(showName);
+  const beat = fuzzyBeatNormalize(beatName);
+  return beat ? `${show}|${beat}` : "";
+}
+
+// FT = Fresh Take / new q1, RW_L = large rework, RW_S = small rework, RW = other
+function classifyScriptType(reworkType) {
+  const rt = String(reworkType || "").trim().toLowerCase();
+  if (rt === "fresh take" || rt === "fresh takes" || rt.startsWith("new q1")) return "FT";
+  if (rt.includes("large")) return "RW_L";
+  if (rt.includes("small")) return "RW_S";
+  return "RW";
+}
+
 function isApprovedIdeationStatus(statusLabel) {
   const status = normalizeKey(statusLabel);
   return status === "gtg" || status === "gtg - minor changes" || status === "approved";
@@ -156,6 +182,75 @@ function getLatestAssetStage(asset) {
     if (stage) return stage;
   }
   return "";
+}
+
+function buildPodThroughputForRange(liveRows, ideationRows, startDate, endDate) {
+  // Build fuzzy ideation keys (strips leading articles + punctuation for "The Thor" ≈ "Thor")
+  const ideationFuzzyKeys = new Set(
+    (Array.isArray(ideationRows) ? ideationRows : [])
+      .map((row) => makeFuzzyBeatKey(row?.showName, row?.beatName))
+      .filter(Boolean)
+  );
+
+  // Filter live rows: date range + GA/GI only (Fresh Takes AND Reworks)
+  const filtered = (Array.isArray(liveRows) ? liveRows : []).filter((row) => {
+    const liveDate = String(row?.liveDate || "").slice(0, 10);
+    if (!liveDate || liveDate < startDate || liveDate > endDate) return false;
+    const type = getAssetTypeFromAssetCode(row?.assetCode);
+    return type === "GA" || type === "GI";
+  });
+
+  // Group by pod → beat, tracking FT/RW type counts
+  const podMap = new Map();
+  const ensurePod = (name) => {
+    const pod = normalizeText(name) || "Unknown POD";
+    if (!podMap.has(pod)) {
+      podMap.set(pod, { podLeadName: pod, totalScripts: 0, ftCount: 0, rwCount: 0, beats: new Map() });
+    }
+    return podMap.get(pod);
+  };
+
+  for (const row of filtered) {
+    const pod = ensurePod(row?.podLeadName);
+    pod.totalScripts += 1;
+
+    const scriptType = classifyScriptType(row?.reworkType);
+    if (scriptType === "FT") pod.ftCount += 1;
+    else pod.rwCount += 1;
+
+    const beatName = normalizeText(row?.beatName) || "Unknown Beat";
+    const showName = normalizeText(row?.showName) || "";
+    const fuzzyKey = makeFuzzyBeatKey(showName, beatName);
+    const inIdeation = Boolean(fuzzyKey && ideationFuzzyKeys.has(fuzzyKey));
+
+    const beatMapKey = fuzzyKey || normalizeKey(beatName);
+    if (!pod.beats.has(beatMapKey)) {
+      pod.beats.set(beatMapKey, {
+        beatName, showName,
+        scriptCount: 0, ftCount: 0, rwLargeCount: 0, rwSmallCount: 0, rwOtherCount: 0,
+        inIdeation,
+      });
+    }
+    const beat = pod.beats.get(beatMapKey);
+    beat.scriptCount += 1;
+    if (scriptType === "FT") beat.ftCount += 1;
+    else if (scriptType === "RW_L") beat.rwLargeCount += 1;
+    else if (scriptType === "RW_S") beat.rwSmallCount += 1;
+    else beat.rwOtherCount += 1;
+  }
+
+  return Array.from(podMap.values())
+    .sort((a, b) => b.totalScripts - a.totalScripts || a.podLeadName.localeCompare(b.podLeadName))
+    .map((pod) => ({
+      podLeadName: pod.podLeadName,
+      totalScripts: pod.totalScripts,
+      ftCount: pod.ftCount,
+      rwCount: pod.rwCount,
+      beats: Array.from(pod.beats.values()).sort((a, b) => {
+        if (a.inIdeation !== b.inIdeation) return a.inIdeation ? 1 : -1;
+        return b.scriptCount - a.scriptCount;
+      }),
+    }));
 }
 
 function buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows) {
@@ -319,6 +414,12 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
   const allLiveOnMetaAssetCount = countAllAssetsWithStage(plannerState.pods, "live_on_meta");
   const activeWriterCount = countActiveWritersInPods(plannerState.pods);
   const submittedByThursday = countAssetsSubmittedByDay(plannerState.pods, 3);
+  const podThroughputRows = buildPodThroughputForRange(
+    liveRows,
+    ideationRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -352,7 +453,7 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
     scriptsPerWriter: activeWriterCount > 0 ? Number((allProductionAssetCount / activeWriterCount).toFixed(1)) : null,
     writingEmptyMessage: timing.writingEmptyMessage,
     clReviewEmptyMessage: timing.clReviewEmptyMessage,
-    podThroughputRows: buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows),
+    podThroughputRows,
     ideationSourceError,
   };
 }
@@ -505,7 +606,7 @@ function buildHitRateAndFunnelForSelection(analyticsRows, selection, { includeNe
   };
 }
 
-function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = false } = {}) {
+function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNewShowsPod = false } = {}) {
   const weekSelection = getWeekSelection("last");
   const weekLabel = formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
@@ -514,6 +615,7 @@ function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = fa
     : allFreshTakeRows.filter((row) => !isNonBauPodLeadName(row?.podLeadName));
   const tatSummary = buildTatSummaryFromRows(freshTakeRows);
   const hitRateData = buildHitRateAndFunnelForSelection(analyticsRows, weekSelection, { includeNewShowsPod });
+  const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, weekSelection.weekStart, weekSelection.weekEnd);
 
   return {
     ok: true,
@@ -544,11 +646,12 @@ function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = fa
     hitRateNumerator: hitRateData.hitRateNumerator,
     hitRateDenominator: hitRateData.hitRateDenominator,
     beatsFunnel: hitRateData.beatsFunnel,
+    podThroughputRows,
     analyticsSourceError: "",
   };
 }
 
-function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNewShowsPod = false } = {}) {
+function buildRangePayload(liveRows, analyticsRows, ideationRows, rangeSelection, { includeNewShowsPod = false } = {}) {
   const rangeLabel = rangeSelection.rangeLabel || formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForRange(
     liveRows,
@@ -564,6 +667,7 @@ function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNew
     return liveDate && liveDate >= rangeSelection.startDate && liveDate <= rangeSelection.endDate;
   });
   const hitRateData = buildHitRateAndFunnelForSelection(filteredAnalyticsRows, rangeSelection, { includeNewShowsPod });
+  const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, rangeSelection.startDate, rangeSelection.endDate);
 
   return {
     ok: true,
@@ -594,6 +698,7 @@ function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNew
     hitRateNumerator: hitRateData.hitRateNumerator,
     hitRateDenominator: hitRateData.hitRateDenominator,
     beatsFunnel: hitRateData.beatsFunnel,
+    podThroughputRows,
     analyticsSourceError: "",
   };
 }
@@ -607,34 +712,34 @@ export async function GET(request) {
 
   try {
     if (startDate || endDate) {
-      const [{ rows: liveRows }, analyticsResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
-          .catch((error) => ({
-            rows: [],
-            error: error?.message || "Analytics source unavailable.",
-          })),
+          .catch((error) => ({ rows: [], error: error?.message || "Analytics source unavailable." })),
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch(() => ({ rows: [], error: "" })),
       ]);
       const rangeSelection = buildDateRangeSelection({ startDate, endDate });
       return NextResponse.json({
-        ...buildRangePayload(liveRows, analyticsResult.rows, rangeSelection, { includeNewShowsPod }),
+        ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, rangeSelection, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
       });
     }
 
     if (period === "last") {
-      const [{ rows: liveRows }, analyticsResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
-          .catch((error) => ({
-            rows: [],
-            error: error?.message || "Analytics source unavailable.",
-          })),
+          .catch((error) => ({ rows: [], error: error?.message || "Analytics source unavailable." })),
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch(() => ({ rows: [], error: "" })),
       ]);
       return NextResponse.json({
-        ...buildLastWeekPayload(liveRows, analyticsResult.rows, { includeNewShowsPod }),
+        ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
       });
     }
