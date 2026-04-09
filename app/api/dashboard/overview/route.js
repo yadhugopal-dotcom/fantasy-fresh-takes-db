@@ -129,8 +129,7 @@ function countFreshTakesInProduction(productionRows, startDate, endDate) {
     if (!eta) return false;
     if (startDate && eta < startDate) return false;
     if (endDate && eta > endDate) return false;
-    const pt = String(row?.productionType || "").trim().toLowerCase();
-    return isFreshTakesLabel(pt) || pt.startsWith("new q1");
+    return true;
   }).length;
 }
 

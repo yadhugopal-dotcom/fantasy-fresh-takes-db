@@ -332,17 +332,16 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
           }
         />
         <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+        />
+        <MetricCard
           label="Moving to production"
           className="hero-card"
           tone={getPipelineCardTone(productionCount, productionTarget)}
           value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(productionCount)}
           hint={`Target: ${productionTarget}`}
-        />
-        <MetricCard
-          label="Fresh Take in Production"
-          className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
-          hint="FT scripts in Production tab this week"
         />
       </div>
       <div className="metric-grid three-col">
@@ -401,6 +400,11 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError,
           }
         />
         <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+        />
+        <MetricCard
           label="Hit rate"
           className="hero-card"
           body={
@@ -413,12 +417,6 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError,
               </div>
             </>
           }
-        />
-        <MetricCard
-          label="Fresh Take in Production"
-          className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
-          hint="FT scripts in Production tab last week"
         />
       </div>
 
@@ -530,6 +528,11 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError,
             </>
           }
         />
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+        />
         {wipCount > 0 ? (
           <MetricCard
             label="Work in Progress"
@@ -539,12 +542,6 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError,
             tone="warning"
           />
         ) : null}
-        <MetricCard
-          label="Fresh Take in Production"
-          className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
-          hint="FT scripts in Production tab next week"
-        />
         <MetricCard
           label="Assets planned to go live"
           className="hero-card"
