@@ -13,6 +13,26 @@ import {
 } from "./shared.jsx";
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
+const ANALYTICS_METRIC_COLUMNS_FALLBACK = [
+  { key: "cpi", label: "CPI", format: "currency", hiddenByDefault: false },
+  { key: "cti", label: "CTI", format: "percent", hiddenByDefault: false },
+  { key: "absoluteCompletion", label: "Absolute completion", format: "percent", hiddenByDefault: false },
+];
+
+const ANALYTICS_LOADING_ROWS = Array.from({ length: 5 }, (_, index) => ({
+  showName: "-",
+  beatName: "-",
+  assetCode: `loading-${index + 1}`,
+  rowIndex: index + 1,
+  nextStep: "-",
+  rowTone: "neutral",
+  actioned: false,
+  metrics: {
+    cpi: { value: 0, meetsBenchmark: null },
+    cti: { value: 0, meetsBenchmark: null },
+    absoluteCompletion: { value: 0, meetsBenchmark: null },
+  },
+}));
 
 function buildAnalyticsSubtitle(data) {
   const parts = [
@@ -53,15 +73,27 @@ export default function AnalyticsContent({
   onToggleActioned,
   actionedBusyKey,
 }) {
+  const isLoadingPlaceholder = analyticsLoading && !analyticsData;
+  const safeAnalyticsData =
+    analyticsData ||
+    {
+      selectedWeekLabel: "Loading",
+      selectedWeekRangeLabel: "",
+      selectedWeekKey: "",
+      rowCount: 0,
+      legend: ANALYTICS_LEGEND_FALLBACK,
+      metricColumns: ANALYTICS_METRIC_COLUMNS_FALLBACK,
+      rows: ANALYTICS_LOADING_ROWS,
+    };
   const [showCompletionBreakdown, setShowCompletionBreakdown] = useState(false);
   const [hideActioned, setHideActioned] = useState(true);
   const [showPromising, setShowPromising] = useState(false);
-  const rows = Array.isArray(analyticsData?.rows) ? analyticsData.rows : [];
+  const rows = Array.isArray(safeAnalyticsData?.rows) ? safeAnalyticsData.rows : [];
   const legendItems =
-    Array.isArray(analyticsData?.legend) && analyticsData.legend.length > 0
-      ? analyticsData.legend
+    Array.isArray(safeAnalyticsData?.legend) && safeAnalyticsData.legend.length > 0
+      ? safeAnalyticsData.legend
       : ANALYTICS_LEGEND_FALLBACK;
-  const metricColumns = Array.isArray(analyticsData?.metricColumns) ? analyticsData.metricColumns : [];
+  const metricColumns = Array.isArray(safeAnalyticsData?.metricColumns) ? safeAnalyticsData.metricColumns : [];
   const visibleMetricColumns = metricColumns.filter((column) => showCompletionBreakdown || !column.hiddenByDefault);
   const hiddenCompletionCount = metricColumns.filter((column) => column.hiddenByDefault).length;
   const actionedCount = rows.filter((row) => Boolean(row?.actioned)).length;
@@ -93,15 +125,15 @@ export default function AnalyticsContent({
     return [...activeRows, ...completedRows];
   }, [hideActioned, showPromising, rows]);
   const analyticsSubtitle = buildAnalyticsSubtitle({
-    ...analyticsData,
+    ...safeAnalyticsData,
     rowCount: visibleRows.length,
   });
 
   return (
     <ShareablePanel
-      shareLabel={`Analytics ${analyticsData?.selectedWeekRangeLabel || "selected range"}`}
+      shareLabel={`Analytics ${safeAnalyticsData?.selectedWeekRangeLabel || "selected range"}`}
       onShare={onShare}
-      isSharing={copyingSection === `Analytics ${analyticsData?.selectedWeekRangeLabel || "selected range"}`}
+      isSharing={copyingSection === `Analytics ${safeAnalyticsData?.selectedWeekRangeLabel || "selected range"}`}
       className="analytics-panel"
     >
       <div className="panel-head">
@@ -121,17 +153,14 @@ export default function AnalyticsContent({
         </div>
         <div className="analytics-kpi-chip">
           <span>Date range</span>
-          <strong>{analyticsData?.selectedWeekRangeLabel || "-"}</strong>
+          <strong>{safeAnalyticsData?.selectedWeekRangeLabel || "-"}</strong>
         </div>
       </div>
 
       <div className="section-stack">
+        {isLoadingPlaceholder ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
         {analyticsError ? <div className="warning-note">{analyticsError}</div> : null}
-
-        {analyticsLoading && !analyticsData ? (
-          <EmptyState text="Loading Analytics dashboard..." />
-        ) : (
-          <>
+        <>
             {rows.length > 0 ? (
               <>
                 <div className="analytics-legend-row">
@@ -200,7 +229,7 @@ export default function AnalyticsContent({
                     </thead>
                     <tbody>
                       {visibleRows.map((row) => {
-                        const rowActionedKey = `${analyticsData?.selectedWeekKey || ""}:${row.assetCode || ""}`;
+                        const rowActionedKey = `${safeAnalyticsData?.selectedWeekKey || ""}:${row.assetCode || ""}`;
                         return (
                           <tr
                             key={`${row.assetCode}-${row.rowIndex}`}
@@ -264,7 +293,6 @@ export default function AnalyticsContent({
               <EmptyState text={analyticsData?.emptyStateMessage || "No analytics rows are available for this range yet."} />
             )}
           </>
-        )}
       </div>
     </ShareablePanel>
   );

@@ -76,15 +76,16 @@ function PodTasksBarChart({ title, subtitle, items, maxValue, accentColor }) {
 }
 
 export function PodTasksContent({ podTasksData, podTasksLoading, onShare, copyingSection }) {
-  if (podTasksLoading) {
-    return <EmptyState text="Loading POD tasks..." />;
-  }
-
-  if (!podTasksData) {
-    return <EmptyState text="POD tasks data is not available right now." />;
-  }
-
-  const { scriptsPendingByPod, beatsPendingByPod, totalScriptsPending, totalBeatsPending } = podTasksData;
+  const fallbackPods = ["Berman", "Roth", "Lee", "Gilatar", "Woodward"];
+  const safeData =
+    podTasksData ||
+    {
+      scriptsPendingByPod: fallbackPods.map((podLead) => ({ podLead, count: 0 })),
+      beatsPendingByPod: fallbackPods.map((podLead) => ({ podLead, count: 0 })),
+      totalScriptsPending: 0,
+      totalBeatsPending: 0,
+    };
+  const { scriptsPendingByPod, beatsPendingByPod, totalScriptsPending, totalBeatsPending } = safeData;
   const maxScripts = Math.max(...scriptsPendingByPod.map((r) => r.count), 1);
   const maxBeats = Math.max(...beatsPendingByPod.map((r) => r.count), 1);
 
@@ -95,6 +96,7 @@ export function PodTasksContent({ podTasksData, podTasksLoading, onShare, copyin
       isSharing={copyingSection === "POD Tasks"}
     >
       <div className="section-stack">
+        {podTasksLoading ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
         <div className="pod-summary-grid">
           {[
             { label: "Scripts to review", value: totalScriptsPending },
@@ -140,14 +142,16 @@ export default function PodWiseContent({
   onShare,
   copyingSection,
 }) {
-  if (competitionLoading) {
-    return <EmptyState text="Loading POD Wise dashboard..." />;
-  }
-
-  const competitionRows = Array.isArray(competitionPodRows) ? competitionPodRows : [];
-  if (competitionRows.length === 0) {
-    return <EmptyState text="POD Wise data is not available right now." />;
-  }
+  const placeholderRows = ["Berman", "Roth", "Lee", "Gilatar", "Woodward"].map((podLeadName) => ({
+    podLeadName,
+    lifetimeBeats: 0,
+    lifetimeScripts: 0,
+    hitRateNumerator: 0,
+    throughputScore: 0,
+    writerCount: 0,
+  }));
+  const competitionRows =
+    Array.isArray(competitionPodRows) && competitionPodRows.length > 0 ? competitionPodRows : placeholderRows;
 
   const sorted = [...competitionRows]
     .map((row) => {
@@ -178,6 +182,7 @@ export default function PodWiseContent({
       isSharing={copyingSection === "POD Wise leaderboard"}
     >
       <div className="section-stack">
+        {competitionLoading ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div className="week-toggle-group">
             {[

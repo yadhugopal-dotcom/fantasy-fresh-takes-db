@@ -196,10 +196,23 @@ export default function BeatsPerformanceContent({
     live: 0,
   });
 
-  const podOptions = Array.isArray(beatsPerformanceData?.filters?.pods) ? beatsPerformanceData.filters.pods : [];
-  const beatRows = Array.isArray(beatsPerformanceData?.rows) ? beatsPerformanceData.rows : [];
-  const freshTakeRows = Array.isArray(beatsPerformanceData?.freshTakeRows) ? beatsPerformanceData.freshTakeRows : [];
-  const workflowTables = beatsPerformanceData?.workflowTables || {};
+  const safeBeatsPerformanceData =
+    beatsPerformanceData ||
+    {
+      filters: { pods: [] },
+      rows: [],
+      freshTakeRows: [],
+      workflowTables: {
+        editorial: [],
+        readyForProduction: [],
+        production: [],
+        live: [],
+      },
+    };
+  const podOptions = Array.isArray(safeBeatsPerformanceData?.filters?.pods) ? safeBeatsPerformanceData.filters.pods : [];
+  const beatRows = Array.isArray(safeBeatsPerformanceData?.rows) ? safeBeatsPerformanceData.rows : [];
+  const freshTakeRows = Array.isArray(safeBeatsPerformanceData?.freshTakeRows) ? safeBeatsPerformanceData.freshTakeRows : [];
+  const workflowTables = safeBeatsPerformanceData?.workflowTables || {};
   const periodOptions = useMemo(() => {
     const optionMap = new Map();
 
@@ -264,14 +277,6 @@ export default function BeatsPerformanceContent({
       live: 0,
     });
   }, [selectedPeriod, selectedPod, workflowSorts]);
-
-  if (beatsPerformanceLoading) {
-    return <EmptyState text="Loading beats performance..." />;
-  }
-
-  if (beatsPerformanceError) {
-    return <div className="warning-note">{beatsPerformanceError}</div>;
-  }
 
   if (!selectedPeriod) {
     return <EmptyState text="Beats performance data is not available right now." />;
@@ -532,6 +537,8 @@ export default function BeatsPerformanceContent({
   return (
     <ShareablePanel shareLabel="Beats Performance" onShare={onShare} isSharing={copyingSection === "Beats Performance"}>
       <div className="section-stack">
+        {beatsPerformanceLoading ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
+        {beatsPerformanceError ? <div className="warning-note">{beatsPerformanceError}</div> : null}
         <div className="section-toolbar">
           <label className="toolbar-select">
             <span>Filter</span>

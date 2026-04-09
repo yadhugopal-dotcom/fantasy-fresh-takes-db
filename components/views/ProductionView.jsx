@@ -260,26 +260,26 @@ export default function ProductionContent({
   copyingSection,
 }) {
   const [selectedAssetTypes, setSelectedAssetTypes] = useState(ASSET_TYPE_OPTIONS);
+  const safeAcdMetricsData =
+    acdMetricsData ||
+    {
+      syncStatus: {},
+      latestWorkDate: "",
+      failureReasonRows: [],
+      emptyStateMessage: EMPTY_ACD_MESSAGE,
+      acdDailyRows: [],
+      acdWeeklyRows: [],
+      acdCdRows: [],
+      acdCdWeeklyRows: [],
+    };
 
-  if (acdMetricsLoading) {
-    return <EmptyState text="Loading Production dashboard..." />;
-  }
-
-  if (acdMetricsError) {
-    return <div className="warning-note">{acdMetricsError}</div>;
-  }
-
-  if (!acdMetricsData) {
-    return <EmptyState text="Production data is not available right now." />;
-  }
-
-  const syncStatus = acdMetricsData.syncStatus || {};
-  const dataset = getAcdLeaderboardDataset(acdMetricsData, acdTimeView, acdViewType);
+  const syncStatus = safeAcdMetricsData.syncStatus || {};
+  const dataset = getAcdLeaderboardDataset(safeAcdMetricsData, acdTimeView, acdViewType);
   const viewLabel = getAcdViewLabel(dataset.viewType);
   const notes = [syncStatus.syncError, syncStatus.sourceFilterWarning].filter(Boolean);
-  const latestWorkDateLabel = acdMetricsData.latestWorkDate ? formatDateLabel(acdMetricsData.latestWorkDate) : "";
+  const latestWorkDateLabel = safeAcdMetricsData.latestWorkDate ? formatDateLabel(safeAcdMetricsData.latestWorkDate) : "";
   const adherenceIssueRows = Array.isArray(syncStatus.adherenceIssueRows) ? syncStatus.adherenceIssueRows : [];
-  const failureReasonRows = Array.isArray(acdMetricsData.failureReasonRows) ? acdMetricsData.failureReasonRows : [];
+  const failureReasonRows = Array.isArray(safeAcdMetricsData.failureReasonRows) ? safeAcdMetricsData.failureReasonRows : [];
   const totalFailedSheets = Number(syncStatus.totalFailedSheets || 0);
   const totalCdsAffected = Array.isArray(syncStatus.adherenceRows) ? syncStatus.adherenceRows.length : 0;
   const filteredAdherenceIssueRows = useMemo(() => {
@@ -305,6 +305,8 @@ export default function ProductionContent({
 
   return (
     <div className="section-stack">
+      {acdMetricsLoading ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
+      {acdMetricsError ? <div className="warning-note">{acdMetricsError}</div> : null}
       {notes.map((note) => (
         <div key={note} className="warning-note">
           {note}
@@ -345,7 +347,7 @@ export default function ProductionContent({
           <div>
             <div className="panel-title">{viewLabel} productivity chart</div>
             <div className="panel-statline">
-              <span>{dataset.rows.length > 0 ? dataset.meta : acdMetricsData.emptyStateMessage || EMPTY_ACD_MESSAGE}</span>
+              <span>{dataset.rows.length > 0 ? dataset.meta : safeAcdMetricsData.emptyStateMessage || EMPTY_ACD_MESSAGE}</span>
               {latestWorkDateLabel ? <span>Latest synced work date: {latestWorkDateLabel}</span> : null}
             </div>
           </div>
