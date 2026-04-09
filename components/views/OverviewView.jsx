@@ -238,9 +238,9 @@ function PodThroughputRankingTable({ rows = [], loading = false }) {
             </td>
             <td style={{ fontSize: 12 }}>
               {beat.inIdeation ? (
-                <span style={{ color: "#2d5a3d", fontWeight: 600 }}>✓ Got it</span>
+                <span style={{ color: "#2d5a3d", fontWeight: 600 }}>Approved</span>
               ) : (
-                <span style={{ color: "#9f2e2e", fontWeight: 600 }}>⚠️ Not in ideation</span>
+                <span style={{ color: "#9f2e2e", fontWeight: 600 }}>Not Approved</span>
               )}
             </td>
           </tr>
@@ -262,7 +262,7 @@ function PodThroughputRankingTable({ rows = [], loading = false }) {
               <th>POD / Beat</th>
               <th style={{ textAlign: "center" }}># Scripts</th>
               <th>Type</th>
-              <th>Ideation</th>
+              <th>Beats Approved</th>
             </tr>
           </thead>
           <tbody>
