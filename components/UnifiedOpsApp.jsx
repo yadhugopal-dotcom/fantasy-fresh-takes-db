@@ -1033,17 +1033,13 @@ export default function UnifiedOpsApp() {
     if (activeView !== "production") return undefined;
     let cancelled = false;
     setProductionPipelineLoading(true);
-    const params = new URLSearchParams({
-      startDate: normalizedHeaderRange.startDate,
-      endDate: normalizedHeaderRange.endDate,
-    });
-    fetch(`/api/dashboard/production?${params}`, { cache: "no-store" })
+    fetch("/api/dashboard/production", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => { if (!cancelled) setProductionPipelineData(data); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setProductionPipelineLoading(false); });
     return () => { cancelled = true; };
-  }, [activeView, normalizedHeaderRange.startDate, normalizedHeaderRange.endDate]);
+  }, [activeView]);
 
   useEffect(() => {
     if (!notice) {
