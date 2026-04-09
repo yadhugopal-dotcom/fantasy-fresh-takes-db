@@ -162,6 +162,52 @@ export default function Planner2Content({
   const dateColumns = Array.isArray(planner2Data?.dateColumns) ? planner2Data.dateColumns : [];
   const dayRows = Array.isArray(planner2Data?.dayRows) ? planner2Data.dayRows : [];
   const weekDates = dateColumns.slice(0, 7);
+  const summaryMetrics = useMemo(() => {
+    const beatSet = new Set();
+    let expectedInProduction = 0;
+    let expectedLive = 0;
+    let writerOoo = 0;
+    const firstDay = weekDates[0] || "";
+    let notWritingToday = 0;
+
+    for (const row of plannerRows) {
+      const dayMap = row?.dayMap || {};
+      const firstDayCommitted = Number(dayMap?.[firstDay]?.committedTaskCount || 0);
+      if (firstDay && firstDayCommitted === 0) {
+        notWritingToday += 1;
+      }
+
+      let hasAnyTask = false;
+      for (const date of weekDates) {
+        const cell = dayMap?.[date] || {};
+        const notes = Array.isArray(cell.notes) ? cell.notes : [];
+        for (const note of notes) {
+          const text = normalizeAngleLabel(note);
+          if (isMeaningfulBeatLine(text)) {
+            beatSet.add(normalizeBeatKey(text));
+            hasAnyTask = true;
+          }
+          if (/\booo\b|out of office/i.test(text)) {
+            writerOoo += 1;
+          }
+        }
+        const stage = stageIdForPlannerCell(cell);
+        if (stage === "production") expectedInProduction += 1;
+        if (stage === "live_on_meta") expectedLive += 1;
+      }
+      if (!hasAnyTask && firstDay && firstDayCommitted === 0) {
+        notWritingToday += 0;
+      }
+    }
+
+    return {
+      beatsThisWeek: beatSet.size,
+      expectedInProduction,
+      expectedLive,
+      writerOoo,
+      notWritingToday,
+    };
+  }, [plannerRows, weekDates]);
   const ganttRows = useMemo(() => {
     return plannerRows.flatMap((row) => {
       const podLeadName = String(row?.podLeadName || "Unmapped").trim() || "Unmapped";
@@ -256,6 +302,37 @@ export default function Planner2Content({
               ) : null}
             </div>
           </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+          {[
+            { label: "Beats this week", value: summaryMetrics.beatsThisWeek, color: "#1a6b5a" },
+            { label: "Expected in Production", value: summaryMetrics.expectedInProduction, color: "#1a6b5a" },
+            { label: "Expected Live", value: summaryMetrics.expectedLive, color: "#1a6b5a" },
+            { label: "Writer OOO", value: summaryMetrics.writerOoo, color: "#8c847d" },
+            { label: "Not writing today", value: summaryMetrics.notWritingToday, color: "#c24141" },
+          ].map((metric) => (
+            <div
+              key={metric.label}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 16px",
+                background: "#fff",
+                border: "1px solid #e0d5c7",
+                borderRadius: 16,
+                borderLeft: `5px solid ${metric.color}`,
+                minWidth: 220,
+              }}
+            >
+              <span style={{ fontSize: 40, lineHeight: 1, fontWeight: 700, color: metric.color }}>
+                {formatNumber(metric.value)}
+              </span>
+              <span style={{ fontSize: 32, lineHeight: 1, color: "#b8b2a8" }}>·</span>
+              <span style={{ fontSize: 18, fontWeight: 600, color: "var(--ink-secondary)" }}>{metric.label}</span>
+            </div>
+          ))}
         </div>
 
         <div className="table-wrap">
