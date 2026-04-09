@@ -178,6 +178,58 @@ function ScriptTypeBadges({ ftCount = 0, rwLargeCount = 0, rwSmallCount = 0, rwO
   return <span>{parts}</span>;
 }
 
+function FtRwCell({ ft, rw }) {
+  const total = ft + rw;
+  if (total === 0) return <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 13 }}>—</td>;
+  return (
+    <td style={{ textAlign: "center", fontSize: 13 }}>
+      <span style={{ fontWeight: 600 }}>{total}</span>
+      <span style={{ color: "var(--subtle)", marginLeft: 4, fontSize: 11 }}>
+        ({ft} FT / {rw} RW)
+      </span>
+    </td>
+  );
+}
+
+function PodBreakdownTable({ rows = [], loading = false }) {
+  if (loading) {
+    return (
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Breakdown by POD</div>
+        <div style={{ fontSize: 13, color: "var(--subtle)" }}>Loading...</div>
+      </div>
+    );
+  }
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (safeRows.length === 0) return null;
+
+  return (
+    <div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Breakdown by POD</div>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: "2px solid var(--border)" }}>
+            <th style={{ textAlign: "left", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>POD</th>
+            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Editorial</th>
+            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Ready for Prod</th>
+            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Production</th>
+          </tr>
+        </thead>
+        <tbody>
+          {safeRows.map((pod) => (
+            <tr key={pod.podLeadName} style={{ borderBottom: "1px solid var(--border)" }}>
+              <td style={{ padding: "6px 8px", fontWeight: 500 }}>{pod.podLeadName}</td>
+              <FtRwCell ft={pod.editorial?.ft ?? 0} rw={pod.editorial?.rw ?? 0} />
+              <FtRwCell ft={pod.readyForProd?.ft ?? 0} rw={pod.readyForProd?.rw ?? 0} />
+              <FtRwCell ft={pod.production?.ft ?? 0} rw={pod.production?.rw ?? 0} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PodThroughputRankingTable({ rows = [], loading = false }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const [expandedPods, setExpandedPods] = useState(new Set());
@@ -635,6 +687,7 @@ export default function OverviewContent({
   const selectionMode = String(overviewData?.selectionMode || "");
   const podThroughputRows = Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : [];
   const editorialPodRows = Array.isArray(overviewData?.editorialPodRows) ? overviewData.editorialPodRows : [];
+  const podBreakdownRows = Array.isArray(overviewData?.podBreakdownRows) ? overviewData.podBreakdownRows : [];
 
   return (
     <ShareablePanel
@@ -658,20 +711,22 @@ export default function OverviewContent({
         ))}
 
         {(() => {
+          const breakdownTable = <PodBreakdownTable rows={podBreakdownRows} loading={overviewLoading} />;
           const throughputTable = <PodThroughputRankingTable rows={podThroughputRows} loading={overviewLoading} />;
           if (selectionMode === "editorial_funnel") {
             const middleSlot = (
               <>
                 <PodEditorialStatusTable rows={editorialPodRows} loading={overviewLoading} />
+                {breakdownTable}
                 {throughputTable}
               </>
             );
             return <OverviewCurrentWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={middleSlot} />;
           }
           if (selectionMode === "planned") {
-            return <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={throughputTable} />;
+            return <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={<>{breakdownTable}{throughputTable}</>} />;
           }
-          return <OverviewLastWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={throughputTable} />;
+          return <OverviewLastWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={<>{breakdownTable}{throughputTable}</>} />;
         })()}
       </div>
     </ShareablePanel>

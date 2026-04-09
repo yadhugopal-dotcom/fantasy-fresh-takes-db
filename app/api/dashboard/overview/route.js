@@ -8,11 +8,14 @@ import {
   buildReleasedFreshTakeAttemptsForRange,
   buildTatSummaryFromRows,
   fetchAnalyticsLiveTabRows,
+  fetchEditorialWorkflowRows,
   fetchIdeationTabRows,
   fetchLiveTabRows,
   fetchProductionWorkflowRows,
+  fetchReadyForProductionWorkflowRows,
   isAnalyticsEligibleProductionType,
   isFreshTakesLabel,
+  normalizePodLeadName,
 } from "../../../../lib/live-tab.js";
 import {
   buildPlannerBeatInventory,
@@ -131,6 +134,67 @@ function countFreshTakesInProduction(productionRows, startDate, endDate) {
     if (endDate && eta > endDate) return false;
     return true;
   }).length;
+}
+
+const BREAKDOWN_POD_ORDER = ["Dan", "Josh", "Nishant", "Paul"];
+
+function classifyFtRw(reworkType) {
+  const rt = String(reworkType || "").trim().toLowerCase();
+  if (!rt) return null; // unknown — don't count in either bucket
+  if (rt === "fresh take" || rt === "fresh takes" || rt.startsWith("new q1") || rt.startsWith("ft")) return "ft";
+  return "rw";
+}
+
+function buildPodBreakdownRows(editorialRows, rfpRows, productionRows) {
+  const podMap = new Map();
+
+  const getOrCreate = (rawName) => {
+    const pod = normalizePodLeadName(rawName);
+    if (!pod) return null;
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { ft: 0, rw: 0 },
+        readyForProd: { ft: 0, rw: 0 },
+        production: { ft: 0, rw: 0 },
+      });
+    }
+    return podMap.get(pod);
+  };
+
+  const inc = (bucket, type) => {
+    if (type === "ft") bucket.ft++;
+    else if (type === "rw") bucket.rw++;
+  };
+
+  // Build map from editorial + RFP first — these tabs have reliable POD columns
+  for (const row of Array.isArray(editorialRows) ? editorialRows : []) {
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.editorial, classifyFtRw(row?.reworkType));
+  }
+  for (const row of Array.isArray(rfpRows) ? rfpRows : []) {
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.readyForProd, classifyFtRw(row?.reworkType));
+  }
+
+  // Production: only count rows whose pod resolves to a pod already in the map
+  // (Production tab POD header is a merged cell — pod names come from row[2] fallback)
+  for (const row of Array.isArray(productionRows) ? productionRows : []) {
+    const pod = normalizePodLeadName(row?.podLeadName || row?.podLeadRaw);
+    if (!pod || !podMap.has(pod)) continue;
+    inc(podMap.get(pod).production, classifyFtRw(row?.reworkType));
+  }
+
+  return [...podMap.values()].sort((a, b) => {
+    const ai = BREAKDOWN_POD_ORDER.indexOf(a.podLeadName);
+    const bi = BREAKDOWN_POD_ORDER.indexOf(b.podLeadName);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.podLeadName.localeCompare(b.podLeadName);
+  });
 }
 
 function normalizeText(value) {
@@ -794,6 +858,16 @@ export async function GET(request) {
   const includeNewShowsPod = url.searchParams.get("includeNewShowsPod") === "true";
 
   try {
+    // Fetch editorial + RFP workflow rows for the breakdown table (shared across all periods)
+    const [editorialWorkflowResult, rfpWorkflowResult] = await Promise.all([
+      fetchEditorialWorkflowRows()
+        .then((result) => ({ rows: result?.rows || [] }))
+        .catch(() => ({ rows: [] })),
+      fetchReadyForProductionWorkflowRows()
+        .then((result) => ({ rows: result?.rows || [] }))
+        .catch(() => ({ rows: [] })),
+    ]);
+
     if (startDate || endDate) {
       const [{ rows: liveRows }, analyticsResult, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
@@ -811,6 +885,7 @@ export async function GET(request) {
       return NextResponse.json({
         ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, rangeSelection, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
       });
     }
 
@@ -830,6 +905,7 @@ export async function GET(request) {
       return NextResponse.json({
         ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
       });
     }
 
@@ -850,14 +926,15 @@ export async function GET(request) {
           .then((result) => ({ rows: result?.rows || [] }))
           .catch(() => ({ rows: [] })),
       ]);
-      return NextResponse.json(
-        buildCurrentWeekPayload(plannerState, {
+      return NextResponse.json({
+        ...buildCurrentWeekPayload(plannerState, {
           liveRows,
           ideationRows: ideationResult.rows,
           productionRows: productionResult.rows,
           ideationSourceError: ideationResult.error,
-        })
-      );
+        }),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+      });
     }
 
     if (period === "next") {
@@ -876,12 +953,13 @@ export async function GET(request) {
           .catch(() => ({ rows: [] })),
       ]);
       const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveResult.rows, "last");
-      return NextResponse.json(
-        buildNextWeekPayload(plannerState, ideationResult.rows, productionResult.rows, {
+      return NextResponse.json({
+        ...buildNextWeekPayload(plannerState, ideationResult.rows, productionResult.rows, {
           ideationSourceError: ideationResult.error,
           prevFreshTakeCount: lwFreshTakeRows.length,
-        })
-      );
+        }),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+      });
     }
   } catch (error) {
     return NextResponse.json(
