@@ -318,19 +318,19 @@ export default function Planner2Content({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "12px 16px",
+                padding: "10px 14px",
                 background: "#fff",
                 border: "1px solid #e0d5c7",
                 borderRadius: 16,
                 borderLeft: `5px solid ${metric.color}`,
-                minWidth: 220,
+                minWidth: 190,
               }}
             >
-              <span style={{ fontSize: 40, lineHeight: 1, fontWeight: 700, color: metric.color }}>
+              <span style={{ fontSize: 28, lineHeight: 1, fontWeight: 700, color: metric.color }}>
                 {formatNumber(metric.value)}
               </span>
-              <span style={{ fontSize: 32, lineHeight: 1, color: "#b8b2a8" }}>·</span>
-              <span style={{ fontSize: 18, fontWeight: 600, color: "var(--ink-secondary)" }}>{metric.label}</span>
+              <span style={{ fontSize: 20, lineHeight: 1, color: "#b8b2a8" }}>·</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-secondary)" }}>{metric.label}</span>
             </div>
           ))}
         </div>
