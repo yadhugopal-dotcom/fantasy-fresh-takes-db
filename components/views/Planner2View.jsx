@@ -54,13 +54,32 @@ function normalizeAngleLabel(value) {
     .trim();
 }
 
+function normalizeBeatCandidate(value) {
+  let text = normalizeAngleLabel(value);
+  if (!text) return "";
+  text = text
+    .replace(/^(write|writing|finish|finished|review|cl review|revise|draft|production|live)\s*[:\-]\s*/i, "")
+    .replace(/^(write|writing|finish|finished|review|cl review|revise|draft|production|live)\s+/i, "")
+    .trim();
+  return text;
+}
+
+function isGenericTaskLine(text) {
+  const key = normalizeAngleLabel(text).toLowerCase();
+  if (!key) return true;
+  if (/(?:^|\b)(write|writing|finish|finished|review|cl review|revise|draft|rework|sync|meeting|follow up|check-in|todo)(?:\b|$)/.test(key)) {
+    return true;
+  }
+  return false;
+}
+
 function extractWriterAngles(dayMap, weekDates) {
   const seen = new Set();
   const angles = [];
   for (const date of weekDates) {
     const notes = Array.isArray(dayMap?.[date]?.notes) ? dayMap[date].notes : [];
     for (const note of notes) {
-      const clean = normalizeAngleLabel(note);
+      const clean = normalizeBeatCandidate(note);
       if (!clean) continue;
       const key = clean.toLowerCase();
       if (seen.has(key)) continue;
@@ -73,7 +92,8 @@ function extractWriterAngles(dayMap, weekDates) {
 }
 
 function isMeaningfulBeatLine(value) {
-  const text = normalizeAngleLabel(value).toLowerCase();
+  const text = normalizeAngleLabel(value);
+  const key = text.toLowerCase();
   if (!text) return false;
   const blocked = [
     "due eod",
@@ -84,8 +104,11 @@ function isMeaningfulBeatLine(value) {
     "contingent",
     "wip",
   ];
-  if (blocked.some((term) => text === term || text.includes(term))) return false;
+  if (blocked.some((term) => key === term || key.includes(term))) return false;
   if (text.length < 3) return false;
+  const hasStructuredSeparator = / - | — |:|\|/.test(text);
+  if (isGenericTaskLine(text) && !hasStructuredSeparator) return false;
+  if (!hasStructuredSeparator && text.split(/\s+/).length < 2) return false;
   return true;
 }
 
@@ -94,13 +117,18 @@ function normalizeBeatKey(value) {
 }
 
 function parseBeatDisplay(value) {
-  const text = normalizeAngleLabel(value);
+  const text = normalizeBeatCandidate(value);
   if (!text) return { title: "-", subtitle: "" };
   const separators = [" - ", " — ", ":", "|"];
   for (const sep of separators) {
     if (text.includes(sep)) {
-      const [head, ...rest] = text.split(sep);
-      return { title: normalizeAngleLabel(head), subtitle: normalizeAngleLabel(rest.join(sep)) };
+      const [head, second] = text
+        .split(sep)
+        .map((part) => normalizeAngleLabel(part))
+        .filter(Boolean);
+      if (head && second) {
+        return { title: head, subtitle: second };
+      }
     }
   }
   if (text.includes("(") && text.includes(")")) {
