@@ -826,7 +826,22 @@ select {
 
 .share-panel-top {
   display: flex;
+  align-items: center;
+  gap: 10px;
   justify-content: flex-end;
+}
+
+.overview-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--subtle);
+  user-select: none;
+}
+
+.overview-inline-check input {
+  accent-color: var(--forest);
 }
 
 .share-button {

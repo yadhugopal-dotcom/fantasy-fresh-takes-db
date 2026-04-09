@@ -1329,17 +1329,6 @@ export default function UnifiedOpsApp() {
 
             {activeView === "overview" ? (
               <div className="section-shell">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", userSelect: "none", color: "var(--ink)" }}>
-                    <input
-                      type="checkbox"
-                      checked={includeNewShowsPod}
-                      onChange={(e) => setIncludeNewShowsPod(e.target.checked)}
-                      style={{ accentColor: "var(--forest)" }}
-                    />
-                    Include new shows POD
-                  </label>
-                </div>
                 <OverviewContent
                   overviewData={overviewData}
                   overviewLoading={overviewLoading}

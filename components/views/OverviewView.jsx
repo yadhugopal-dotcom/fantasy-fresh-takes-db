@@ -458,6 +458,16 @@ export default function OverviewContent({
       shareLabel={`Editorial Funnel ${weekLabel || "selected range"}`}
       onShare={onShare}
       isSharing={copyingSection === `Editorial Funnel ${weekLabel || "selected range"}`}
+      topControls={
+        <label className="overview-inline-check">
+          <input
+            type="checkbox"
+            checked={Boolean(includeNewShowsPod)}
+            onChange={(event) => onIncludeNewShowsPodChange?.(event.target.checked)}
+          />
+          <span>Include new shows POD (Dan Woodward)</span>
+        </label>
+      }
     >
       <div className="section-stack">
         {notes.map((note) => (

@@ -443,12 +443,13 @@ export function ShareButton({ onClick, busy = false }) {
   );
 }
 
-export function ShareablePanel({ shareLabel, onShare, isSharing = false, className = "", children }) {
+export function ShareablePanel({ shareLabel, onShare, isSharing = false, className = "", topControls = null, children }) {
   const panelRef = useRef(null);
 
   return (
     <section ref={panelRef} className={`panel-card shareable-panel ${className}`.trim()}>
       <div className="share-panel-top" data-share-ignore="true">
+        {topControls}
         <ShareButton onClick={() => void onShare(panelRef.current, shareLabel)} busy={isSharing} />
       </div>
       {children}
