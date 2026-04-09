@@ -677,6 +677,7 @@ export default function UnifiedOpsApp() {
     };
   }, [activeView, dashboardDateRange]);
 
+
   useEffect(() => {
     if (activeView !== "pod-wise" || podWiseView !== "performance") {
       return undefined;
@@ -1049,7 +1050,7 @@ export default function UnifiedOpsApp() {
   }
 
   useEffect(() => {
-    if (activeView !== "production" && activeView !== "details") {
+    if (activeView !== "production" && activeView !== "details" && activeView !== "overview" && activeView !== "leadership-overview") {
       return undefined;
     }
     if (acdMetricsData) {
@@ -1397,6 +1398,12 @@ export default function UnifiedOpsApp() {
                   leadershipOverviewLoading={leadershipOverviewLoading}
                   leadershipOverviewError={leadershipOverviewError}
                   onNavigate={setActiveView}
+                  acdMetricsData={acdMetricsData}
+                  acdMetricsLoading={acdMetricsLoading}
+                  acdTimeView={acdTimeView}
+                  onTimeViewChange={setAcdTimeView}
+                  acdViewType={acdViewType}
+                  onViewTypeChange={setAcdViewType}
                 />
               </div>
             ) : null}
@@ -1407,6 +1414,12 @@ export default function UnifiedOpsApp() {
                   overviewData={overviewData}
                   overviewLoading={overviewLoading}
                   overviewError={overviewError}
+                  acdMetricsData={acdMetricsData}
+                  acdMetricsLoading={acdMetricsLoading}
+                  acdTimeView={acdTimeView}
+                  onTimeViewChange={setAcdTimeView}
+                  acdViewType={acdViewType}
+                  onViewTypeChange={setAcdViewType}
                   onShare={copySection}
                   copyingSection={copyingSection}
                   includeNewShowsPod={includeNewShowsPod}
@@ -1486,6 +1499,7 @@ export default function UnifiedOpsApp() {
                 />
               </div>
             ) : null}
+
 
             {activeView === "analytics" ? (
               <div className="section-shell">

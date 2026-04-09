@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, useRef } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { MIN_DASHBOARD_DATE, WEEK_VIEW_OPTIONS } from "../../lib/week-view.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -511,4 +512,81 @@ export class PlannerErrorBoundary extends Component {
 
     return this.props.children;
   }
+}
+
+// ─── Shared ACD Chart ─────────────────────────────────────────────────────────
+
+function AcdChartTooltip({ active, payload, label }) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  const row = payload[0]?.payload || {};
+  return (
+    <div className="acd-chart-tooltip">
+      <div className="acd-chart-tooltip-title">{label || row.name || "-"}</div>
+      <div className="acd-chart-tooltip-row">
+        <span>Minutes</span>
+        <strong>{formatNumber(row.totalMinutes)}</strong>
+      </div>
+      <div className="acd-chart-tooltip-row">
+        <span>Total images</span>
+        <strong>{formatNumber(row.totalImages)}</strong>
+      </div>
+    </div>
+  );
+}
+
+export function AcdLeaderboardChart({ rows, viewLabel, emptyText = "No ACD data available." }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const chartRows = safeRows.map((row) => ({
+    ...row,
+    name: String(row.name || ""),
+    totalMinutes: Number(row.totalMinutes || 0),
+    totalImages: Number(row.totalImages || 0),
+  }));
+  const chartHeight = Math.max(280, chartRows.length * 44 + 28);
+  const yAxisWidth = Math.min(
+    220,
+    Math.max(120, chartRows.reduce((max, row) => Math.max(max, String(row.name || "").length * 7), 0))
+  );
+
+  if (chartRows.length === 0) {
+    return <EmptyState text={emptyText} />;
+  }
+
+  return (
+    <div className="acd-chart-canvas" role="img" aria-label={`${viewLabel} productivity bar chart`}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        <BarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 28, left: 8, bottom: 8 }} barCategoryGap={12}>
+          <CartesianGrid horizontal={false} stroke="#ddd6c9" strokeDasharray="3 3" />
+          <XAxis
+            type="number"
+            tick={{ fill: "#a39e93", fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+            label={{ value: "Minutes", position: "insideBottomRight", offset: -2, fill: "#a39e93", fontSize: 12 }}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={yAxisWidth}
+            tick={{ fill: "#1c1917", fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip cursor={{ fill: "rgba(20, 107, 101, 0.08)" }} content={<AcdChartTooltip />} />
+          <Bar dataKey="totalMinutes" radius={[0, 10, 10, 0]}>
+            <LabelList
+              dataKey="totalMinutes"
+              position="right"
+              formatter={(value) => `${formatNumber(value)} min`}
+              fill="#1c1917"
+              fontSize={12}
+            />
+            {chartRows.map((row, index) => (
+              <Cell key={`${row.name}-${index}`} fill={getChartBarColor(index, chartRows.length)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }

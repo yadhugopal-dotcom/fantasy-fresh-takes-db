@@ -376,7 +376,6 @@ export default function Planner2Content({
               );
             })}
             <span className="planner2-clean-chip planner2-clean-chip-live">Live this week</span>
-            <span className="planner2-clean-chip planner2-clean-chip-not-live">Not live yet</span>
           </div>
         </div>
 
@@ -449,21 +448,23 @@ export default function Planner2Content({
                                 {`${ideationDays} day${ideationDays === 1 ? "" : "s"} in beats ideation`}
                               </span>
                             ) : null}
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "2px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: hasLive ? "#166534" : "#9a3412",
-                                border: `1px solid ${hasLive ? "rgba(22, 101, 52, 0.28)" : "rgba(154, 52, 18, 0.28)"}`,
-                                background: hasLive ? "rgba(22, 101, 52, 0.08)" : "rgba(154, 52, 18, 0.08)",
-                              }}
-                            >
-                              {hasLive ? "Live this week" : "Not live yet"}
-                            </span>
+                            {hasLive ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: "#166534",
+                                  border: "1px solid rgba(22, 101, 52, 0.28)",
+                                  background: "rgba(22, 101, 52, 0.08)",
+                                }}
+                              >
+                                Live this week
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                       ) : null}

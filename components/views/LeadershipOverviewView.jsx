@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 import {
+  AcdLeaderboardChart,
   MetricCard,
+  ToggleGroup,
+  ACD_TIME_OPTIONS,
+  ACD_VIEW_OPTIONS,
   formatNumber,
   formatMetricValue,
   formatPercent,
+  formatDateLabel,
   normalizePodFilterKey,
+  getAcdViewLabel,
+  getAcdLeaderboardDataset,
 } from "./shared.jsx";
 import { getWeekSelection } from "../../lib/week-view.js";
 
@@ -84,7 +91,7 @@ function sanitizeAllowedOwnerName(value) {
   return SECTION3_ALLOWED_NAMES.has(cleaned) ? cleaned : "";
 }
 
-export default function LeadershipOverviewContent({ leadershipOverviewData, leadershipOverviewLoading, leadershipOverviewError, onNavigate }) {
+export default function LeadershipOverviewContent({ leadershipOverviewData, leadershipOverviewLoading, leadershipOverviewError, onNavigate, acdMetricsData, acdMetricsLoading, acdTimeView, onTimeViewChange, acdViewType, onViewTypeChange }) {
   const overviewData = leadershipOverviewData || null;
   const overviewLoading = Boolean(leadershipOverviewLoading);
   const overviewError = leadershipOverviewError || "";
@@ -570,78 +577,33 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
         <div className="panel-card overview-panel-card">
           <div className="panel-head" style={{ marginBottom: 8 }}>
             <div>
-              <div className="panel-title">ACD productivity</div>
-              <div className="panel-statline">CD-level rollup with collapsible ACD detail. Throughput is shown as minutes produced.</div>
+              {(() => {
+                const dataset = getAcdLeaderboardDataset(acdMetricsData, acdTimeView, acdViewType);
+                const viewLabel = getAcdViewLabel(dataset.viewType);
+                const latestWorkDateLabel = acdMetricsData?.latestWorkDate ? formatDateLabel(acdMetricsData.latestWorkDate) : "";
+                return (
+                  <>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <div className="panel-title">{viewLabel} productivity chart</div>
+                        <div className="panel-statline">
+                          {dataset.meta}{latestWorkDateLabel ? `  Latest synced work date: ${latestWorkDateLabel}` : ""}
+                        </div>
+                      </div>
+                      <div className="production-toggle-wrap">
+                        <ToggleGroup label="Time View" options={ACD_TIME_OPTIONS} value={acdTimeView} onChange={onTimeViewChange} />
+                        <ToggleGroup label="View Type" options={ACD_VIEW_OPTIONS} value={acdViewType} onChange={onViewTypeChange} />
+                      </div>
+                    </div>
+                    {acdMetricsLoading ? (
+                      <div style={{ fontSize: 12, color: "var(--subtle)" }}>Loading production data…</div>
+                    ) : (
+                      <AcdLeaderboardChart rows={dataset.rows} viewLabel={viewLabel} />
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          </div>
-          <div className="table-wrap">
-            <table className="ops-table overview-table">
-              <thead>
-                <tr>
-                  <th>CD / ACD</th>
-                  <th>Production (min)</th>
-                  <th>Live (min)</th>
-                  <th>Total (min)</th>
-                  <th>Mins/Day</th>
-                </tr>
-              </thead>
-              <tbody>
-                {throughputByCd.length > 0 ? (
-                  throughputByCd.flatMap((cdRow) => {
-                    const isExpanded = Boolean(expandedCds[cdRow.cdName]);
-                    const cdTr = (
-                      <tr key={`cd-${cdRow.cdName}`} style={{ fontWeight: 700 }}>
-                        <td>
-                          <button
-                            type="button"
-                            className="as-link"
-                            onClick={() =>
-                              setExpandedCds((current) => ({
-                                ...current,
-                                [cdRow.cdName]: !current[cdRow.cdName],
-                              }))
-                            }
-                            style={{
-                              padding: 0,
-                              border: "none",
-                              background: "transparent",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {isExpanded ? "▾" : "▸"} {cdRow.cdName || "-"}
-                          </button>
-                        </td>
-                        <td>{formatNumber(cdRow.productionMinutes)}</td>
-                        <td>{formatNumber(cdRow.liveMinutes)}</td>
-                        <td>{formatNumber(cdRow.totalMinutes)}</td>
-                        <td>{formatNumber(cdRow.minutesPerDay)}</td>
-                      </tr>
-                    );
-
-                    const acdTrs = isExpanded
-                      ? cdRow.acdRows.map((acdRow) => (
-                          <tr key={`acd-${cdRow.cdName}-${acdRow.acdName}`}>
-                            <td style={{ paddingLeft: 34, color: "var(--subtle)" }}>• {acdRow.acdName || "-"}</td>
-                            <td>{formatNumber(acdRow.productionMinutes)}</td>
-                            <td>{formatNumber(acdRow.liveMinutes)}</td>
-                            <td>{formatNumber(acdRow.totalMinutes)}</td>
-                            <td>{formatNumber(acdRow.minutesPerDay)}</td>
-                          </tr>
-                        ))
-                      : [];
-
-                    return [cdTr, ...acdTrs];
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="5">No throughput rows available for this filter yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="overview-section-note" style={{ marginTop: 8 }}>
-            Click a CD row to expand ACD-level throughput. Mins/Day = Total minutes / {weekdayCount} weekday(s) in selected range.
           </div>
         </div>
       </section>

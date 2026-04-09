@@ -2,17 +2,24 @@
 import { useState } from "react";
 
 import {
+  AcdLeaderboardChart,
   MetricCard,
   ProgressBar,
   ReadinessRow,
   ShareablePanel,
+  ToggleGroup,
+  ACD_TIME_OPTIONS,
+  ACD_VIEW_OPTIONS,
   formatMetricValue,
   formatNumber,
   formatPercent,
+  formatDateLabel,
   getTargetCardTone,
   getTatCardTone,
   getWritingDaysTone,
   getClReviewDaysTone,
+  getAcdViewLabel,
+  getAcdLeaderboardDataset,
 } from "./shared.jsx";
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
@@ -78,7 +85,7 @@ function EditorialPodThroughputTable({ rows = [] }) {
             )
           }
         >
-          {allExpanded ? "Collapse all pods" : "Open POD Wise"}
+          {allExpanded ? "Collapse all pods" : "Expand all pods"}
         </button>
       </div>
       <div className="table-wrap">
@@ -436,12 +443,48 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError 
   );
 }
 
+// ─── Production Throughput Chart ──────────────────────────────────────────────
+
+function ProductionThroughputChart({ acdMetricsData, acdMetricsLoading, acdTimeView, onTimeViewChange, acdViewType, onViewTypeChange }) {
+  const dataset = getAcdLeaderboardDataset(acdMetricsData, acdTimeView, acdViewType);
+  const viewLabel = getAcdViewLabel(dataset.viewType);
+  const latestWorkDateLabel = acdMetricsData?.latestWorkDate ? formatDateLabel(acdMetricsData.latestWorkDate) : "";
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{viewLabel} productivity chart</div>
+          <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 2 }}>
+            {dataset.meta}{latestWorkDateLabel ? `  Latest synced work date: ${latestWorkDateLabel}` : ""}
+          </div>
+        </div>
+        <div className="production-toggle-wrap">
+          <ToggleGroup label="Time View" options={ACD_TIME_OPTIONS} value={acdTimeView} onChange={onTimeViewChange} />
+          <ToggleGroup label="View Type" options={ACD_VIEW_OPTIONS} value={acdViewType} onChange={onViewTypeChange} />
+        </div>
+      </div>
+      {acdMetricsLoading ? (
+        <div style={{ fontSize: 12, color: "var(--subtle)" }}>Loading production data…</div>
+      ) : (
+        <AcdLeaderboardChart rows={dataset.rows} viewLabel={viewLabel} />
+      )}
+    </div>
+  );
+}
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export default function OverviewContent({
   overviewData,
   overviewLoading,
   overviewError,
+  acdMetricsData,
+  acdMetricsLoading,
+  acdTimeView,
+  onTimeViewChange,
+  acdViewType,
+  onViewTypeChange,
   onShare,
   copyingSection,
   includeNewShowsPod,
@@ -487,6 +530,16 @@ export default function OverviewContent({
         {selectionMode === "planned" && (
           <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
         )}
+
+        <hr className="section-divider" />
+        <ProductionThroughputChart
+          acdMetricsData={acdMetricsData}
+          acdMetricsLoading={acdMetricsLoading}
+          acdTimeView={acdTimeView}
+          onTimeViewChange={onTimeViewChange}
+          acdViewType={acdViewType}
+          onViewTypeChange={onViewTypeChange}
+        />
       </div>
     </ShareablePanel>
   );
