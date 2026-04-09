@@ -94,13 +94,34 @@ function StagePill({ count, label, color, bg }) {
 
 function PodEditorialStatusTable({ rows = [], loading = false }) {
   const safeRows = Array.isArray(rows) ? rows : [];
+  const [expandedPods, setExpandedPods] = useState({});
+
+  const togglePod = (podName) =>
+    setExpandedPods((prev) => ({ ...prev, [podName]: !prev[podName] }));
 
   const tableRows = [];
   for (const pod of safeRows) {
     const writerRows = Array.isArray(pod.writerRows) ? pod.writerRows : [];
+    const isExpanded = Boolean(expandedPods[pod.podLeadName]);
     tableRows.push(
-      <tr key={`pod-${pod.podLeadName}`}>
-        <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+      <tr
+        key={`pod-${pod.podLeadName}`}
+        style={{ cursor: writerRows.length > 0 ? "pointer" : undefined }}
+        onClick={writerRows.length > 0 ? () => togglePod(pod.podLeadName) : undefined}
+      >
+        <td style={{ fontWeight: 700 }}>
+          {writerRows.length > 0 && (
+            <span style={{ marginRight: 6, fontSize: 10, color: "var(--subtle)" }}>
+              {isExpanded ? "▼" : "▶"}
+            </span>
+          )}
+          {pod.podLeadName}
+          {writerRows.length > 0 && (
+            <span style={{ marginLeft: 6, fontSize: 10, color: "var(--subtle)", fontWeight: 400 }}>
+              {writerRows.length} writer{writerRows.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </td>
         <td style={{ textAlign: "center", fontWeight: 700, color: "#2d5a3d", fontSize: 15 }}>
           {pod.lwProductionCount || 0}
         </td>
@@ -114,18 +135,20 @@ function PodEditorialStatusTable({ rows = [], loading = false }) {
         </td>
       </tr>
     );
-    for (const writer of writerRows) {
-      tableRows.push(
-        <tr key={`writer-${pod.podLeadName}-${writer.writerName}`} style={{ background: "var(--bg-deep, #f7f4ef)" }}>
-          <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>• {writer.writerName}</td>
-          <td style={{ textAlign: "center", fontWeight: 600, fontSize: 12 }}>{writer.lwProductionCount || 0}</td>
-          <td>
-            <StagePill count={writer.onTrackCount} label="On Track" color="#2d5a3d" bg="#e8f4ea" />
-            <StagePill count={writer.reviewWithClCount} label="Review w/ CL" color="#7c6bbf" bg="#f0edfb" />
-            <StagePill count={writer.wipCount} label="WIP" color="#9f6b15" bg="#fdf5e4" />
-          </td>
-        </tr>
-      );
+    if (isExpanded) {
+      for (const writer of writerRows) {
+        tableRows.push(
+          <tr key={`writer-${pod.podLeadName}-${writer.writerName}`} style={{ background: "var(--bg-deep, #f7f4ef)" }}>
+            <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>• {writer.writerName}</td>
+            <td style={{ textAlign: "center", fontWeight: 600, fontSize: 12 }}>{writer.lwProductionCount || 0}</td>
+            <td>
+              <StagePill count={writer.onTrackCount} label="On Track" color="#2d5a3d" bg="#e8f4ea" />
+              <StagePill count={writer.reviewWithClCount} label="Review w/ CL" color="#7c6bbf" bg="#f0edfb" />
+              <StagePill count={writer.wipCount} label="WIP" color="#9f6b15" bg="#fdf5e4" />
+            </td>
+          </tr>
+        );
+      }
     }
   }
 
