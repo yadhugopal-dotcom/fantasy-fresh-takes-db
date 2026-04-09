@@ -62,6 +62,21 @@ function getHitRateColor(rate) {
   return "#9f2e2e";
 }
 
+function DeltaBadge({ current, previous, loading, label = "vs prev week" }) {
+  if (loading || previous == null || current == null) return null;
+  const delta = Number(current) - Number(previous);
+  if (delta === 0) {
+    return <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 4 }}>= same as {label}</div>;
+  }
+  const color = delta > 0 ? "#2d5a3d" : "#9f2e2e";
+  const sign = delta > 0 ? "+" : "";
+  return (
+    <div style={{ fontSize: 11, fontWeight: 600, color, marginTop: 4 }}>
+      {sign}{delta} vs {label}
+    </div>
+  );
+}
+
 function StagePill({ count, label, color, bg }) {
   if (!count) return null;
   return (
@@ -301,8 +316,20 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
           label="Unique beats this week"
           className="hero-card"
           tone={getPipelineCardTone(beatsCount, beatsTarget)}
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-          hint={`Target: ${beatsTarget}+`}
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
+              </div>
+              <div className="metric-hint">{`Target: ${beatsTarget}+`}</div>
+              <DeltaBadge
+                current={beatsCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="LW releases"
+              />
+            </>
+          }
         />
         <MetricCard
           label="Moving to production"
@@ -351,16 +378,21 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError,
         <MetricCard
           label="Fresh takes released"
           className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeCount)}
-          hint="Unique attempts from Live tab"
           tone={getTargetCardTone(overviewData?.freshTakeCount, overviewData?.targetFloor)}
-        />
-        <MetricCard
-          label="Production TAT"
-          value={overviewLoading ? "..." : unavailableMetricValue || (tatDays != null ? formatNumber(tatDays) : "-")}
-          unit="days"
-          hint="From last week's Live tab"
-          tone={getTatCardTone(tatDays, tatSummary?.targetTatDays)}
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeCount)}
+              </div>
+              <div className="metric-hint">Unique attempts from Live tab</div>
+              <DeltaBadge
+                current={overviewData?.freshTakeCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="prev week"
+              />
+            </>
+          }
         />
         <MetricCard
           label="Hit rate"
@@ -470,9 +502,21 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError,
         <MetricCard
           label="Beats locked GTG"
           className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-          hint="Confirmed and ready to go"
           tone="positive"
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
+              </div>
+              <div className="metric-hint">Confirmed and ready to go</div>
+              <DeltaBadge
+                current={beatsCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="LW releases"
+              />
+            </>
+          }
         />
         {wipCount > 0 ? (
           <MetricCard

@@ -126,6 +126,12 @@ function normalizeText(value) {
   return String(value || "").trim();
 }
 
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function normalizeKey(value) {
   return normalizeText(value).toLowerCase();
 }
@@ -446,6 +452,10 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
   );
   const editorialPodRows = buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows);
 
+  // Previous period comparison: use last week's actual releases as baseline
+  const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
+  const prevFreshTakeCount = lwFreshTakeRows.length;
+
   return {
     ok: true,
     period: "current",
@@ -480,11 +490,12 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
     clReviewEmptyMessage: timing.clReviewEmptyMessage,
     podThroughputRows,
     editorialPodRows,
+    prevFreshTakeCount,
     ideationSourceError,
   };
 }
 
-function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError = "" } = {}) {
+function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError = "", prevFreshTakeCount = null } = {}) {
   const gtgMetrics = buildGoodToGoBeatsMetricsFromIdeationTab(ideationRows, "next", {
     sourceWeekOffsetWeeks: -1,
   });
@@ -530,6 +541,7 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
     scriptsPerWriter: activeWriterCount > 0 ? Number((allProductionAssetCount / activeWriterCount).toFixed(1)) : null,
     writingEmptyMessage: timing.writingEmptyMessage,
     clReviewEmptyMessage: timing.clReviewEmptyMessage,
+    prevFreshTakeCount,
     ideationSourceError,
   };
 }
@@ -643,6 +655,15 @@ function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNe
   const hitRateData = buildHitRateAndFunnelForSelection(analyticsRows, weekSelection, { includeNewShowsPod });
   const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, weekSelection.weekStart, weekSelection.weekEnd);
 
+  // Previous week comparison (week before last)
+  const prevWeekStart = addDays(weekSelection.weekStart, -7);
+  const prevWeekEnd = addDays(weekSelection.weekEnd, -7);
+  const allPrevFreshTakeRows = buildReleasedFreshTakeAttemptsForRange(liveRows, prevWeekStart, prevWeekEnd);
+  const prevFreshTakeCount = (includeNewShowsPod
+    ? allPrevFreshTakeRows
+    : allPrevFreshTakeRows.filter((r) => !isNonBauPodLeadName(r?.podLeadName))
+  ).length;
+
   return {
     ok: true,
     period: "last",
@@ -673,6 +694,7 @@ function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNe
     hitRateDenominator: hitRateData.hitRateDenominator,
     beatsFunnel: hitRateData.beatsFunnel,
     podThroughputRows,
+    prevFreshTakeCount,
     analyticsSourceError: "",
   };
 }
@@ -794,16 +816,22 @@ export async function GET(request) {
     }
 
     if (period === "next") {
-      const ideationResult = await fetchIdeationTabRows()
-        .then((result) => ({ rows: result?.rows || [], error: "" }))
-        .catch((error) => ({
-          rows: [],
-          error:
-            error?.message || "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
-        }));
+      const [ideationResult, liveResult] = await Promise.all([
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch((error) => ({
+            rows: [],
+            error: error?.message || "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
+          })),
+        fetchLiveTabRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
+      ]);
+      const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveResult.rows, "last");
       return NextResponse.json(
         buildNextWeekPayload(plannerState, ideationResult.rows, {
           ideationSourceError: ideationResult.error,
+          prevFreshTakeCount: lwFreshTakeRows.length,
         })
       );
     }
