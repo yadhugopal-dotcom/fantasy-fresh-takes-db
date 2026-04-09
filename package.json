@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "update:jive": "node scripts/update-jive-csv.mjs"
   },
   "dependencies": {
     "googleapis": "^171.4.0",
