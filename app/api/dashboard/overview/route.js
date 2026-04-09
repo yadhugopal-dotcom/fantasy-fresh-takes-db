@@ -145,7 +145,7 @@ function classifyFtRw(reworkType) {
   return "rw";
 }
 
-function buildPodBreakdownRows(editorialRows, rfpRows, productionRows) {
+function buildPodBreakdownRows(editorialRows, rfpRows, productionRows, { startDate, endDate } = {}) {
   const podMap = new Map();
 
   const getOrCreate = (rawName) => {
@@ -157,6 +157,7 @@ function buildPodBreakdownRows(editorialRows, rfpRows, productionRows) {
         editorial: { ft: 0, rw: 0 },
         readyForProd: { ft: 0, rw: 0 },
         production: { ft: 0, rw: 0 },
+        productionPipeline: { ft: 0, rw: 0 },
       });
     }
     return podMap.get(pod);
@@ -167,24 +168,53 @@ function buildPodBreakdownRows(editorialRows, rfpRows, productionRows) {
     else if (type === "rw") bucket.rw++;
   };
 
-  // Build map from editorial + RFP first — these tabs have reliable POD columns
+  const inRange = (date) => {
+    if (!date) return false;
+    const d = String(date).slice(0, 10);
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  };
+
+  // Editorial: filter by dateAssigned if dates provided
   for (const row of Array.isArray(editorialRows) ? editorialRows : []) {
+    if (startDate && !inRange(row?.dateAssigned)) continue;
     const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
     if (!entry) continue;
     inc(entry.editorial, classifyFtRw(row?.reworkType));
   }
+
+  // RFP: filter by etaToStartProd if dates provided
   for (const row of Array.isArray(rfpRows) ? rfpRows : []) {
+    if (startDate && !inRange(row?.etaToStartProd)) continue;
     const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
     if (!entry) continue;
     inc(entry.readyForProd, classifyFtRw(row?.reworkType));
   }
 
-  // Production: only count rows whose pod resolves to a pod already in the map
-  // (Production tab POD header is a merged cell — pod names come from row[2] fallback)
+  // Production: always populate the map from editorial/rfp first, then count production
+  // productionPipeline = all items (no date filter), production = date-filtered throughput
   for (const row of Array.isArray(productionRows) ? productionRows : []) {
     const pod = normalizePodLeadName(row?.podLeadName || row?.podLeadRaw);
-    if (!pod || !podMap.has(pod)) continue;
-    inc(podMap.get(pod).production, classifyFtRw(row?.reworkType));
+    if (!pod) continue;
+    // Ensure pod entry exists (even if not in editorial/rfp)
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { ft: 0, rw: 0 },
+        readyForProd: { ft: 0, rw: 0 },
+        production: { ft: 0, rw: 0 },
+        productionPipeline: { ft: 0, rw: 0 },
+      });
+    }
+    const entry = podMap.get(pod);
+    const type = classifyFtRw(row?.reworkType);
+    // Pipeline: all items
+    inc(entry.productionPipeline, type);
+    // Throughput: date-filtered
+    if (!startDate || inRange(row?.etaToStartProd)) {
+      inc(entry.production, type);
+    }
   }
 
   return [...podMap.values()].sort((a, b) => {
@@ -885,7 +915,7 @@ export async function GET(request) {
       return NextResponse.json({
         ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, rangeSelection, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
-        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: rangeSelection.startDate, endDate: rangeSelection.endDate }),
       });
     }
 
@@ -902,10 +932,11 @@ export async function GET(request) {
           .then((result) => ({ rows: result?.rows || [] }))
           .catch(() => ({ rows: [] })),
       ]);
+      const lastWeekSelection = getWeekSelection("last");
       return NextResponse.json({
         ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
-        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: lastWeekSelection.weekStart, endDate: lastWeekSelection.weekEnd }),
       });
     }
 
@@ -933,7 +964,7 @@ export async function GET(request) {
           productionRows: productionResult.rows,
           ideationSourceError: ideationResult.error,
         }),
-        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: plannerState.weekSelection.weekStart, endDate: plannerState.weekSelection.weekEnd }),
       });
     }
 
@@ -958,7 +989,7 @@ export async function GET(request) {
           ideationSourceError: ideationResult.error,
           prevFreshTakeCount: lwFreshTakeRows.length,
         }),
-        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: plannerState.weekSelection.weekStart, endDate: plannerState.weekSelection.weekEnd }),
       });
     }
   } catch (error) {

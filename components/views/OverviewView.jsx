@@ -182,50 +182,82 @@ function FtRwCell({ ft, rw }) {
   const total = ft + rw;
   if (total === 0) return <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 13 }}>—</td>;
   return (
-    <td style={{ textAlign: "center", fontSize: 13 }}>
-      <span style={{ fontWeight: 600 }}>{total}</span>
-      <span style={{ color: "var(--subtle)", marginLeft: 4, fontSize: 11 }}>
-        ({ft} FT / {rw} RW)
-      </span>
+    <td style={{ textAlign: "center" }}>
+      <span style={{ fontWeight: 700 }}>{total}</span>
+      {" "}
+      <ScriptTypeBadges compact ftCount={ft} rwOtherCount={rw} />
     </td>
   );
 }
 
 function PodBreakdownTable({ rows = [], loading = false }) {
-  if (loading) {
-    return (
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Breakdown by POD</div>
-        <div style={{ fontSize: 13, color: "var(--subtle)" }}>Loading...</div>
-      </div>
-    );
-  }
+  const [prodMode, setProdMode] = useState("throughput");
   const safeRows = Array.isArray(rows) ? rows : [];
-  if (safeRows.length === 0) return null;
+
+  const prodKey = prodMode === "pipeline" ? "productionPipeline" : "production";
 
   return (
-    <div>
-      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Breakdown by POD</div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead>
-          <tr style={{ borderBottom: "2px solid var(--border)" }}>
-            <th style={{ textAlign: "left", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>POD</th>
-            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Editorial</th>
-            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Ready for Prod</th>
-            <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 600, color: "var(--label)" }}>Production</th>
-          </tr>
-        </thead>
-        <tbody>
-          {safeRows.map((pod) => (
-            <tr key={pod.podLeadName} style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={{ padding: "6px 8px", fontWeight: 500 }}>{pod.podLeadName}</td>
-              <FtRwCell ft={pod.editorial?.ft ?? 0} rw={pod.editorial?.rw ?? 0} />
-              <FtRwCell ft={pod.readyForProd?.ft ?? 0} rw={pod.readyForProd?.rw ?? 0} />
-              <FtRwCell ft={pod.production?.ft ?? 0} rw={pod.production?.rw ?? 0} />
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Breakdown by POD</div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        Scripts per workflow stage · date-filtered · FT = Fresh Take · RW = Rework
+      </div>
+      <div className="table-wrap">
+        <table className="ops-table overview-table">
+          <thead>
+            <tr>
+              <th>POD</th>
+              <th style={{ textAlign: "center" }}>Editorial</th>
+              <th style={{ textAlign: "center" }}>Ready for Prod</th>
+              <th style={{ textAlign: "center" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  Production
+                  <span style={{ display: "inline-flex", borderRadius: 4, overflow: "hidden", border: "1px solid var(--border-strong)" }}>
+                    <button
+                      type="button"
+                      onClick={() => setProdMode("throughput")}
+                      style={{
+                        padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em",
+                        background: prodMode === "throughput" ? "var(--accent)" : "transparent",
+                        color: prodMode === "throughput" ? "#fff" : "var(--muted)",
+                        border: "none", textTransform: "uppercase",
+                      }}
+                    >
+                      Throughput
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProdMode("pipeline")}
+                      style={{
+                        padding: "1px 6px", fontSize: 10, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em",
+                        background: prodMode === "pipeline" ? "var(--accent)" : "transparent",
+                        color: prodMode === "pipeline" ? "#fff" : "var(--muted)",
+                        border: "none", textTransform: "uppercase",
+                      }}
+                    >
+                      Pipeline
+                    </button>
+                  </span>
+                </span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : safeRows.length === 0 ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>No data for the selected period.</td></tr>
+            ) : safeRows.map((pod) => (
+              <tr key={pod.podLeadName}>
+                <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+                <FtRwCell ft={pod.editorial?.ft ?? 0} rw={pod.editorial?.rw ?? 0} />
+                <FtRwCell ft={pod.readyForProd?.ft ?? 0} rw={pod.readyForProd?.rw ?? 0} />
+                <FtRwCell ft={pod[prodKey]?.ft ?? 0} rw={pod[prodKey]?.rw ?? 0} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
