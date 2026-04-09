@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import {
   MetricCard,
@@ -108,14 +108,6 @@ function ScriptTypeBadges({ ftCount = 0, rwLargeCount = 0, rwSmallCount = 0, rwO
 function PodThroughputRankingTable({ rows = [], loading = false }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const [expandedPods, setExpandedPods] = useState(new Set());
-
-  // Auto-expand all pods when data first loads
-  useEffect(() => {
-    if (!loading && safeRows.length > 0) {
-      setExpandedPods(new Set(safeRows.map((p) => p.podLeadName)));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
 
   const togglePod = (podName) => {
     setExpandedPods((prev) => {
