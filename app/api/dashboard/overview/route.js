@@ -176,9 +176,8 @@ function buildPodBreakdownRows(editorialRows, rfpRows, productionRows, { startDa
     return true;
   };
 
-  // Editorial: filter by dateAssigned if dates provided
+  // Editorial: no date filter — always show full pipeline state
   for (const row of Array.isArray(editorialRows) ? editorialRows : []) {
-    if (startDate && !inRange(row?.dateAssigned)) continue;
     const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
     if (!entry) continue;
     inc(entry.editorial, classifyFtRw(row?.reworkType));
