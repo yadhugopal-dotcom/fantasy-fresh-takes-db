@@ -329,23 +329,32 @@ function buildPodThroughputForRange(liveRows, ideationRows, startDate, endDate) 
     return getAssetTypeFromAssetCode(row?.assetCode) === "GA";
   });
 
-  // Group by pod → beat, tracking FT/RW type counts
+  // Group by pod → writer → beat, tracking FT/RW type counts
   const podMap = new Map();
   const ensurePod = (name) => {
     const pod = normalizeText(name) || "Unknown POD";
     if (!podMap.has(pod)) {
-      podMap.set(pod, { podLeadName: pod, totalScripts: 0, ftCount: 0, rwCount: 0, beats: new Map() });
+      podMap.set(pod, { podLeadName: pod, totalScripts: 0, ftCount: 0, rwCount: 0, writers: new Map(), beats: new Map() });
     }
     return podMap.get(pod);
+  };
+  const ensureWriter = (pod, name) => {
+    const writer = normalizeText(name) || "Unknown Writer";
+    if (!pod.writers.has(writer)) {
+      pod.writers.set(writer, { writerName: writer, totalScripts: 0, ftCount: 0, rwCount: 0 });
+    }
+    return pod.writers.get(writer);
   };
 
   for (const row of filtered) {
     const pod = ensurePod(row?.podLeadName);
     pod.totalScripts += 1;
+    const writer = ensureWriter(pod, row?.writerName);
+    writer.totalScripts += 1;
 
     const scriptType = classifyScriptType(row?.reworkType);
-    if (scriptType === "FT") pod.ftCount += 1;
-    else pod.rwCount += 1;
+    if (scriptType === "FT") { pod.ftCount += 1; writer.ftCount += 1; }
+    else { pod.rwCount += 1; writer.rwCount += 1; }
 
     const beatName = normalizeText(row?.beatName) || "Unknown Beat";
     const showName = normalizeText(row?.showName) || "";
@@ -379,6 +388,7 @@ function buildPodThroughputForRange(liveRows, ideationRows, startDate, endDate) 
       totalScripts: pod.totalScripts,
       ftCount: pod.ftCount,
       rwCount: pod.rwCount,
+      writerRows: Array.from(pod.writers.values()).sort((a, b) => b.totalScripts - a.totalScripts || a.writerName.localeCompare(b.writerName)),
       beats: Array.from(pod.beats.values()).sort((a, b) => {
         if (a.inIdeation !== b.inIdeation) return a.inIdeation ? 1 : -1;
         return b.scriptCount - a.scriptCount;

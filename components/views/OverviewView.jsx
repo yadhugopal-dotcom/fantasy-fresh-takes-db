@@ -289,27 +289,34 @@ function PodThroughputRankingTable({ rows = [], loading = false }) {
 
   const tableRows = [];
   for (const pod of safeRows) {
-    const beats = Array.isArray(pod.beats) ? pod.beats : [];
+    const writerRows = Array.isArray(pod.writerRows) ? pod.writerRows : [];
     const isExpanded = expandedPods.has(pod.podLeadName);
 
     tableRows.push(
       <tr
         key={`pod-${pod.podLeadName}`}
         className="throughput-pod-summary-row"
-        style={{ cursor: "pointer", userSelect: "none" }}
-        onClick={() => togglePod(pod.podLeadName)}
+        style={{ cursor: writerRows.length > 0 ? "pointer" : undefined, userSelect: "none" }}
+        onClick={writerRows.length > 0 ? () => togglePod(pod.podLeadName) : undefined}
       >
         <td style={{ fontWeight: 700 }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{
-              fontSize: 10, width: 16, height: 16, display: "inline-flex",
-              alignItems: "center", justifyContent: "center",
-              background: "var(--subtle-bg, #f0ece4)", borderRadius: 3,
-              color: "var(--subtle)", flexShrink: 0,
-            }}>
-              {isExpanded ? "▾" : "▸"}
-            </span>
+            {writerRows.length > 0 && (
+              <span style={{
+                fontSize: 10, width: 16, height: 16, display: "inline-flex",
+                alignItems: "center", justifyContent: "center",
+                background: "var(--subtle-bg, #f0ece4)", borderRadius: 3,
+                color: "var(--subtle)", flexShrink: 0,
+              }}>
+                {isExpanded ? "▾" : "▸"}
+              </span>
+            )}
             {pod.podLeadName}
+            {writerRows.length > 0 && (
+              <span style={{ fontWeight: 400, fontSize: 11, color: "var(--subtle)" }}>
+                {writerRows.length} writer{writerRows.length !== 1 ? "s" : ""}
+              </span>
+            )}
           </span>
         </td>
         <td style={{ fontWeight: 700, textAlign: "center" }}>{formatNumber(pod.totalScripts)}</td>
@@ -322,38 +329,23 @@ function PodThroughputRankingTable({ rows = [], loading = false }) {
             rwOtherCount={pod.rwCount || 0}
           />
         </td>
-        <td style={{ color: "var(--subtle)", fontSize: 11 }}>
-          {beats.length} beat{beats.length !== 1 ? "s" : ""}
-        </td>
       </tr>
     );
 
     if (isExpanded) {
-      for (let bi = 0; bi < beats.length; bi++) {
-        const beat = beats[bi];
+      for (const writer of writerRows) {
         tableRows.push(
-          <tr key={`beat-${pod.podLeadName}-${bi}-${beat.beatName}`} className="throughput-beat-row">
-            <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>
-              {beat.showName ? `${beat.showName} — ` : ""}{beat.beatName}
-            </td>
-            <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 12 }}>
-              {formatNumber(beat.scriptCount)}
-            </td>
+          <tr key={`writer-${pod.podLeadName}-${writer.writerName}`} style={{ background: "var(--bg-deep, #f7f4ef)" }}>
+            <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>• {writer.writerName}</td>
+            <td style={{ textAlign: "center", fontSize: 12 }}>{formatNumber(writer.totalScripts)}</td>
             <td>
               <ScriptTypeBadges
                 compact
-                ftCount={beat.ftCount || 0}
-                rwLargeCount={beat.rwLargeCount || 0}
-                rwSmallCount={beat.rwSmallCount || 0}
-                rwOtherCount={beat.rwOtherCount || 0}
+                ftCount={writer.ftCount || 0}
+                rwLargeCount={0}
+                rwSmallCount={0}
+                rwOtherCount={writer.rwCount || 0}
               />
-            </td>
-            <td style={{ fontSize: 12 }}>
-              {beat.inIdeation ? (
-                <span style={{ color: "#2d5a3d", fontWeight: 600 }}>Approved</span>
-              ) : (
-                <span style={{ color: "#9f2e2e", fontWeight: 600 }}>Not Approved</span>
-              )}
             </td>
           </tr>
         );
@@ -365,25 +357,24 @@ function PodThroughputRankingTable({ rows = [], loading = false }) {
     <div style={{ marginTop: 20 }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>POD throughput ranking</div>
       <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
-        GA assets (Q1 manual + thumbnail) · date-filtered · FT = Fresh Take · RW = Rework (L=large, S=small) · beat checked against Ideation tab
+        GA assets (Q1 manual + thumbnail) · date-filtered · click pod to see writers · FT = Fresh Take · RW = Rework
       </div>
       <div className="table-wrap">
         <table className="ops-table overview-table">
           <thead>
             <tr>
-              <th>POD / Beat</th>
+              <th>POD / Writer</th>
               <th style={{ textAlign: "center" }}># Scripts</th>
               <th>Type</th>
-              <th>Beats Approved</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+              <tr><td colSpan="3" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
             ) : tableRows.length > 0 ? (
               tableRows
             ) : (
-              <tr><td colSpan="4">No GA/GI scripts found for the selected date range.</td></tr>
+              <tr><td colSpan="3">No GA scripts found for the selected date range.</td></tr>
             )}
           </tbody>
         </table>
