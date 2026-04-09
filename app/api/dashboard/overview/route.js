@@ -10,6 +10,7 @@ import {
   fetchAnalyticsLiveTabRows,
   fetchIdeationTabRows,
   fetchLiveTabRows,
+  fetchProductionWorkflowRows,
   isAnalyticsEligibleProductionType,
   isFreshTakesLabel,
 } from "../../../../lib/live-tab.js";
@@ -120,6 +121,17 @@ function buildPlannerTimingSummary(plannerBeats) {
     clReviewEmptyMessage:
       metrics.uniqueBeatCount > 0 ? "" : "No planner beats are assigned for the selected week yet.",
   };
+}
+
+function countFreshTakesInProduction(productionRows, startDate, endDate) {
+  return (Array.isArray(productionRows) ? productionRows : []).filter((row) => {
+    const eta = String(row?.etaToStartProd || "").slice(0, 10);
+    if (!eta) return false;
+    if (startDate && eta < startDate) return false;
+    if (endDate && eta > endDate) return false;
+    const pt = String(row?.productionType || "").trim().toLowerCase();
+    return isFreshTakesLabel(pt) || pt.startsWith("new q1");
+  }).length;
 }
 
 function normalizeText(value) {
@@ -438,7 +450,7 @@ function buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows) {
   );
 }
 
-function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [], ideationSourceError = "" } = {}) {
+function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [], productionRows = [], ideationSourceError = "" } = {}) {
   const timing = buildPlannerTimingSummary(plannerState.plannerBeats);
   const allProductionAssetCount = countAllAssetsWithStage(plannerState.pods, "production");
   const allLiveOnMetaAssetCount = countAllAssetsWithStage(plannerState.pods, "live_on_meta");
@@ -455,6 +467,11 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
   // Previous period comparison: use last week's actual releases as baseline
   const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
   const prevFreshTakeCount = lwFreshTakeRows.length;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -472,6 +489,7 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
     freshTakeCount: timing.plannedLiveCount,
     plannedReleaseCount: allLiveOnMetaAssetCount,
     inProductionBeatCount: allProductionAssetCount,
+    freshTakeInProductionCount,
     submittedByThursday,
     productionOutputCount: null,
     goodToGoBeatsCount: null,
@@ -495,7 +513,7 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
   };
 }
 
-function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError = "", prevFreshTakeCount = null } = {}) {
+function buildNextWeekPayload(plannerState, ideationRows, productionRows, { ideationSourceError = "", prevFreshTakeCount = null } = {}) {
   const gtgMetrics = buildGoodToGoBeatsMetricsFromIdeationTab(ideationRows, "next", {
     sourceWeekOffsetWeeks: -1,
   });
@@ -504,6 +522,11 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
   const allProductionAssetCount = countAllAssetsWithStage(plannerState.pods, "production");
   const activeWriterCount = countActiveWritersInPods(plannerState.pods);
   const plannedReleaseCount = allLiveOnMetaAssetCount;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -529,6 +552,7 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
     freshTakeCount: plannedReleaseCount,
     plannedReleaseCount,
     inProductionBeatCount: allProductionAssetCount,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary: timing.tatSummary,
@@ -644,7 +668,7 @@ function buildHitRateAndFunnelForSelection(analyticsRows, selection, { includeNe
   };
 }
 
-function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNewShowsPod = false } = {}) {
+function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, productionRows, { includeNewShowsPod = false } = {}) {
   const weekSelection = getWeekSelection("last");
   const weekLabel = formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
@@ -663,6 +687,11 @@ function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNe
     ? allPrevFreshTakeRows
     : allPrevFreshTakeRows.filter((r) => !isNonBauPodLeadName(r?.podLeadName))
   ).length;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    weekSelection.weekStart,
+    weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -684,6 +713,7 @@ function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNe
     freshTakeCount: freshTakeRows.length,
     plannedReleaseCount: null,
     inProductionBeatCount: null,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary,
@@ -699,7 +729,7 @@ function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, { includeNe
   };
 }
 
-function buildRangePayload(liveRows, analyticsRows, ideationRows, rangeSelection, { includeNewShowsPod = false } = {}) {
+function buildRangePayload(liveRows, analyticsRows, ideationRows, productionRows, rangeSelection, { includeNewShowsPod = false } = {}) {
   const rangeLabel = rangeSelection.rangeLabel || formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForRange(
     liveRows,
@@ -716,6 +746,11 @@ function buildRangePayload(liveRows, analyticsRows, ideationRows, rangeSelection
   });
   const hitRateData = buildHitRateAndFunnelForSelection(filteredAnalyticsRows, rangeSelection, { includeNewShowsPod });
   const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, rangeSelection.startDate, rangeSelection.endDate);
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    rangeSelection.startDate,
+    rangeSelection.endDate
+  );
 
   return {
     ok: true,
@@ -738,6 +773,7 @@ function buildRangePayload(liveRows, analyticsRows, ideationRows, rangeSelection
     freshTakeCount: freshTakeRows.length,
     plannedReleaseCount: null,
     inProductionBeatCount: null,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary,
@@ -760,7 +796,7 @@ export async function GET(request) {
 
   try {
     if (startDate || endDate) {
-      const [{ rows: liveRows }, analyticsResult, ideationResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
@@ -768,16 +804,19 @@ export async function GET(request) {
         fetchIdeationTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
           .catch(() => ({ rows: [], error: "" })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
       const rangeSelection = buildDateRangeSelection({ startDate, endDate });
       return NextResponse.json({
-        ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, rangeSelection, { includeNewShowsPod }),
+        ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, rangeSelection, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
       });
     }
 
     if (period === "last") {
-      const [{ rows: liveRows }, analyticsResult, ideationResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
@@ -785,9 +824,12 @@ export async function GET(request) {
         fetchIdeationTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
           .catch(() => ({ rows: [], error: "" })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
       return NextResponse.json({
-        ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, { includeNewShowsPod }),
+        ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
       });
     }
@@ -795,7 +837,7 @@ export async function GET(request) {
     const plannerState = await loadPlannerWeek(period, { includeNewShowsPod });
 
     if (period === "current") {
-      const [{ rows: liveRows }, ideationResult] = await Promise.all([
+      const [{ rows: liveRows }, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchIdeationTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
@@ -805,18 +847,22 @@ export async function GET(request) {
               error?.message ||
               "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
           })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
       return NextResponse.json(
         buildCurrentWeekPayload(plannerState, {
           liveRows,
           ideationRows: ideationResult.rows,
+          productionRows: productionResult.rows,
           ideationSourceError: ideationResult.error,
         })
       );
     }
 
     if (period === "next") {
-      const [ideationResult, liveResult] = await Promise.all([
+      const [ideationResult, liveResult, productionResult] = await Promise.all([
         fetchIdeationTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
           .catch((error) => ({
@@ -826,10 +872,13 @@ export async function GET(request) {
         fetchLiveTabRows()
           .then((result) => ({ rows: result?.rows || [] }))
           .catch(() => ({ rows: [] })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
       const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveResult.rows, "last");
       return NextResponse.json(
-        buildNextWeekPayload(plannerState, ideationResult.rows, {
+        buildNextWeekPayload(plannerState, ideationResult.rows, productionResult.rows, {
           ideationSourceError: ideationResult.error,
           prevFreshTakeCount: lwFreshTakeRows.length,
         })

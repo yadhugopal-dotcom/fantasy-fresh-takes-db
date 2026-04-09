@@ -338,6 +338,12 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
           value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(productionCount)}
           hint={`Target: ${productionTarget}`}
         />
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+          hint="FT scripts in Production tab this week"
+        />
       </div>
       <div className="metric-grid three-col">
         <MetricCard
@@ -407,6 +413,12 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError,
               </div>
             </>
           }
+        />
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+          hint="FT scripts in Production tab last week"
         />
       </div>
 
@@ -527,6 +539,12 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError,
             tone="warning"
           />
         ) : null}
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
+          hint="FT scripts in Production tab next week"
+        />
         <MetricCard
           label="Assets planned to go live"
           className="hero-card"
