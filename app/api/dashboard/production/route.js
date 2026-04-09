@@ -296,6 +296,79 @@ function buildPipelineSummary(editorialRows, rfpRows, productionRows, liveAssetC
   };
 }
 
+const POD_ORDER = ["Dan", "Josh", "Nishant", "Paul"];
+
+function buildPodBreakdownForPipeline(editorialRows, rfpRows, productionRows, { startDate, endDate } = {}) {
+  const podMap = new Map();
+
+  const inRange = (date) => {
+    if (!startDate) return true;
+    const d = String(date || "").slice(0, 10);
+    if (!d) return false;
+    if (d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  };
+
+  const getOrCreate = (rawName) => {
+    const pod = normalizePodLeadName(rawName) || String(rawName || "").trim();
+    if (!pod) return null;
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { total: 0, ft: 0, rw: 0 },
+        readyForProd: { total: 0, ft: 0, rw: 0 },
+        production: { total: 0, ft: 0, rw: 0 },
+      });
+    }
+    return podMap.get(pod);
+  };
+
+  const inc = (bucket, reworkType) => {
+    bucket.total++;
+    const type = classifyFtRw(reworkType);
+    if (type === "ft") bucket.ft++;
+    else if (type === "rw") bucket.rw++;
+  };
+
+  for (const row of Array.isArray(editorialRows) ? editorialRows : []) {
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.editorial, row?.reworkType);
+  }
+
+  for (const row of Array.isArray(rfpRows) ? rfpRows : []) {
+    if (!inRange(row?.etaToStartProd)) continue;
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.readyForProd, row?.reworkType);
+  }
+
+  for (const row of Array.isArray(productionRows) ? productionRows : []) {
+    if (!inRange(row?.etaToStartProd)) continue;
+    const pod = normalizePodLeadName(row?.podLeadName || row?.podLeadRaw) || String(row?.podLeadName || "").trim();
+    if (!pod) continue;
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { total: 0, ft: 0, rw: 0 },
+        readyForProd: { total: 0, ft: 0, rw: 0 },
+        production: { total: 0, ft: 0, rw: 0 },
+      });
+    }
+    inc(podMap.get(pod).production, row?.reworkType);
+  }
+
+  return [...podMap.values()].sort((a, b) => {
+    const ai = POD_ORDER.indexOf(a.podLeadName);
+    const bi = POD_ORDER.indexOf(b.podLeadName);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.podLeadName.localeCompare(b.podLeadName);
+  });
+}
+
 function buildProductionPipelineRows(workflowRows) {
   const podMap = new Map();
 
@@ -325,7 +398,6 @@ function buildProductionPipelineRows(workflowRows) {
     });
   }
 
-  const POD_ORDER = ["Dan", "Josh", "Nishant", "Paul"];
   return [...podMap.values()]
     .sort((a, b) => {
       const ai = POD_ORDER.indexOf(a.podLeadName);
@@ -448,14 +520,10 @@ export async function GET(request) {
     const prodWorkflowRows = workflowResult.status === "fulfilled" ? (workflowResult.value?.rows || []) : [];
     const editorialWorkflowRows = editorialResult.status === "fulfilled" ? (editorialResult.value?.rows || []) : [];
     const rfpWorkflowRows = rfpResult.status === "fulfilled" ? (rfpResult.value?.rows || []) : [];
+    const dateOpts = { startDate: useExplicitRange ? rangeSelection.startDate : weekSelection.weekStart, endDate: useExplicitRange ? rangeSelection.endDate : weekSelection.weekEnd };
     const pipelineRows = buildProductionPipelineRows(prodWorkflowRows);
-    const pipelineSummary = buildPipelineSummary(
-      editorialWorkflowRows,
-      rfpWorkflowRows,
-      prodWorkflowRows,
-      productionMetrics.productionTeamOutput?.liveAssetCount,
-      { startDate: useExplicitRange ? rangeSelection.startDate : weekSelection.weekStart, endDate: useExplicitRange ? rangeSelection.endDate : weekSelection.weekEnd }
-    );
+    const pipelineSummary = buildPipelineSummary(editorialWorkflowRows, rfpWorkflowRows, prodWorkflowRows, productionMetrics.productionTeamOutput?.liveAssetCount, dateOpts);
+    const podBreakdownRows = buildPodBreakdownForPipeline(editorialWorkflowRows, rfpWorkflowRows, prodWorkflowRows, dateOpts);
 
     return NextResponse.json({
       ok: true,
@@ -474,6 +542,7 @@ export async function GET(request) {
       acdPairRows,
       pipelineRows,
       pipelineSummary,
+      podBreakdownRows,
       productionTeamOutput: productionMetrics.productionTeamOutput,
       tatSummary: productionMetrics.tatSummary,
       tatRows: productionMetrics.tatRows,
