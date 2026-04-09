@@ -523,7 +523,7 @@ export async function GET(request) {
     const dateOpts = { startDate: useExplicitRange ? rangeSelection.startDate : weekSelection.weekStart, endDate: useExplicitRange ? rangeSelection.endDate : weekSelection.weekEnd };
     const pipelineRows = buildProductionPipelineRows(prodWorkflowRows);
     const pipelineSummary = buildPipelineSummary(editorialWorkflowRows, rfpWorkflowRows, prodWorkflowRows, productionMetrics.productionTeamOutput?.liveAssetCount, dateOpts);
-    const podBreakdownRows = buildPodBreakdownForPipeline(editorialWorkflowRows, rfpWorkflowRows, prodWorkflowRows, dateOpts);
+    const podBreakdownRows = buildPodBreakdownForPipeline(editorialWorkflowRows, rfpWorkflowRows, prodWorkflowRows);
 
     return NextResponse.json({
       ok: true,

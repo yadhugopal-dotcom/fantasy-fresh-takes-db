@@ -559,46 +559,44 @@ export default function ProductionContent({
             </div>
           </div>
 
-          {(productionPipelineLoading || podBreakdownRows.length > 0) && (
-            <div style={{ padding: "20px 24px 8px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 12 }}>
-                Breakdown by POD
-              </div>
-              <div className="table-wrap">
-                <table className="ops-table overview-table">
-                  <thead>
-                    <tr>
-                      <th>POD</th>
-                      <th style={{ textAlign: "center" }}>Editorial</th>
-                      <th style={{ textAlign: "center" }}>Ready for Prod</th>
-                      <th style={{ textAlign: "center" }}>Production</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {productionPipelineLoading ? (
-                      <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
-                    ) : podBreakdownRows.map((pod) => (
-                      <tr key={pod.podLeadName}>
-                        <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
-                        {[pod.editorial, pod.readyForProd, pod.production].map((stage, i) => (
-                          stage.total === 0
-                            ? <td key={i} style={{ textAlign: "center", color: "var(--subtle)" }}>—</td>
-                            : <td key={i} style={{ textAlign: "center" }}>
-                                <span style={{ fontWeight: 700 }}>{stage.total}</span>
-                                {" "}
-                                {stage.ft > 0 && <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, background: "#e8f4ea", color: "#2d5a3d", borderRadius: 4, padding: "1px 5px", marginRight: 3 }}>FT:{stage.ft}</span>}
-                                {stage.rw > 0 && <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, background: "#fdf0e6", color: "#c2601e", borderRadius: 4, padding: "1px 5px" }}>RW:{stage.rw}</span>}
-                              </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div style={{ padding: "20px 24px 16px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 12 }}>
+              Breakdown by POD
             </div>
-          )}
-
-          <ProductionPipelineTable rows={pipelineRows} loading={productionPipelineLoading} />
+            <div className="table-wrap">
+              <table className="ops-table overview-table">
+                <thead>
+                  <tr>
+                    <th>POD</th>
+                    <th style={{ textAlign: "center" }}>Editorial</th>
+                    <th style={{ textAlign: "center" }}>Ready for Prod</th>
+                    <th style={{ textAlign: "center" }}>Production</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productionPipelineLoading ? (
+                    <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+                  ) : podBreakdownRows.length === 0 ? (
+                    <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>No data available.</td></tr>
+                  ) : podBreakdownRows.map((pod) => (
+                    <tr key={pod.podLeadName}>
+                      <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+                      {[pod.editorial, pod.readyForProd, pod.production].map((stage, i) => (
+                        stage.total === 0
+                          ? <td key={i} style={{ textAlign: "center", color: "var(--subtle)" }}>—</td>
+                          : <td key={i} style={{ textAlign: "center" }}>
+                              <span style={{ fontWeight: 700 }}>{stage.total}</span>
+                              {" "}
+                              {stage.ft > 0 && <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, background: "#e8f4ea", color: "#2d5a3d", borderRadius: 4, padding: "1px 5px", marginRight: 3 }}>FT:{stage.ft}</span>}
+                              {stage.rw > 0 && <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, background: "#fdf0e6", color: "#c2601e", borderRadius: 4, padding: "1px 5px" }}>RW:{stage.rw}</span>}
+                            </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </ShareablePanel>
       )}
 
