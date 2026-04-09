@@ -64,91 +64,283 @@ function getHitRateColor(rate) {
   return "#9f2e2e";
 }
 
-function EditorialPodThroughputTable({ rows = [] }) {
-  const [expandedPods, setExpandedPods] = useState({});
-  const allExpanded = rows.length > 0 && rows.every((row) => Boolean(expandedPods[row.podLeadName]));
-
+function DeltaBadge({ current, previous, loading, label = "vs prev week" }) {
+  if (loading || previous == null || current == null) return null;
+  const delta = Number(current) - Number(previous);
+  if (delta === 0) {
+    return <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 4 }}>= same as {label}</div>;
+  }
+  const color = delta > 0 ? "#2d5a3d" : "#9f2e2e";
+  const sign = delta > 0 ? "+" : "";
   return (
-    <div>
-      <div className="overview-section-actions" style={{ justifyContent: "flex-end", marginBottom: 8 }}>
-        <button
-          type="button"
-          className="ghost-button overview-section-link"
-          onClick={() =>
-            setExpandedPods(
-              allExpanded ? {} : Object.fromEntries(rows.map((row) => [row.podLeadName, true]))
-            )
-          }
-        >
-          {allExpanded ? "Collapse all pods" : "Expand all pods"}
-        </button>
+    <div style={{ fontSize: 11, fontWeight: 600, color, marginTop: 4 }}>
+      {sign}{delta} vs {label}
+    </div>
+  );
+}
+
+function StagePill({ count, label, color, bg }) {
+  if (!count) return null;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      fontSize: 11, fontWeight: 600, borderRadius: 5,
+      padding: "2px 7px", background: bg, color, marginRight: 5,
+    }}>
+      {count} <span style={{ fontWeight: 400, opacity: 0.8 }}>{label}</span>
+    </span>
+  );
+}
+
+function PodEditorialStatusTable({ rows = [], loading = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>POD production status</div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        LW production · FT · GA/GI · approved beats only &nbsp;·&nbsp; This week stage from planner
       </div>
       <div className="table-wrap">
         <table className="ops-table overview-table">
           <thead>
             <tr>
-              <th>POD / Writer</th>
-              <th>LW to Production (GA/GI, approved)</th>
-              <th>This week beats</th>
-              <th>WIP</th>
-              <th>Review with CL</th>
-              <th>On track for next week</th>
-              <th>NW readiness stage</th>
-              <th>Thu status</th>
+              <th>POD</th>
+              <th style={{ textAlign: "center" }}>LW Prod</th>
+              <th>This week stage breakdown</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length > 0 ? (
-              rows.flatMap((row) => {
-                const isExpanded = Boolean(expandedPods[row.podLeadName]);
-                const podRow = (
-                  <tr key={`pod-${row.podLeadName}`} style={{ fontWeight: 700 }}>
-                    <td>
-                      <button
-                        type="button"
-                        className="as-link"
-                        onClick={() =>
-                          setExpandedPods((current) => ({
-                            ...current,
-                            [row.podLeadName]: !current[row.podLeadName],
-                          }))
-                        }
-                        style={{ padding: 0, border: "none", background: "transparent", fontWeight: 700 }}
-                      >
-                        {isExpanded ? "▾" : "▸"} {row.podLeadName || "-"}
-                      </button>
-                    </td>
-                    <td>{formatMetricValue(row.lwProductionCount)}</td>
-                    <td>{formatMetricValue(row.thisWeekBeatsCount)}</td>
-                    <td>{formatMetricValue(row.wipCount)}</td>
-                    <td>{formatMetricValue(row.reviewWithClCount)}</td>
-                    <td>{formatMetricValue(row.onTrackCount)}</td>
-                    <td>{row.readinessStage || "-"}</td>
-                    <td>{row.thuStatusMessage || "-"}</td>
-                  </tr>
-                );
-
-                const writerRows = isExpanded
-                  ? (Array.isArray(row.writerRows) ? row.writerRows : []).map((writer) => (
-                      <tr key={`writer-${row.podLeadName}-${writer.writerName}`}>
-                        <td style={{ paddingLeft: 34, color: "var(--subtle)" }}>• {writer.writerName || "-"}</td>
-                        <td>{formatMetricValue(writer.lwProductionCount)}</td>
-                        <td>{formatMetricValue(writer.thisWeekBeatsCount)}</td>
-                        <td>{formatMetricValue(writer.wipCount)}</td>
-                        <td>{formatMetricValue(writer.reviewWithClCount)}</td>
-                        <td>{formatMetricValue(writer.onTrackCount)}</td>
-                        <td>{writer.readinessStage || "-"}</td>
-                        <td>-</td>
-                      </tr>
-                    ))
-                  : [];
-
-                return [podRow, ...writerRows];
-              })
-            ) : (
-              <tr>
-                <td colSpan="8">No POD throughput rows available yet.</td>
+            {loading ? (
+              <tr><td colSpan="3" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : safeRows.length === 0 ? (
+              <tr><td colSpan="3" style={{ color: "var(--subtle)" }}>No data yet for this period.</td></tr>
+            ) : safeRows.map((pod) => (
+              <tr key={pod.podLeadName}>
+                <td style={{ fontWeight: 600 }}>{pod.podLeadName}</td>
+                <td style={{ textAlign: "center", fontWeight: 700, color: "#2d5a3d", fontSize: 15 }}>
+                  {pod.lwProductionCount || 0}
+                </td>
+                <td>
+                  <StagePill count={pod.onTrackCount} label="On Track" color="#2d5a3d" bg="#e8f4ea" />
+                  <StagePill count={pod.reviewWithClCount} label="Review w/ CL" color="#7c6bbf" bg="#f0edfb" />
+                  <StagePill count={pod.wipCount} label="WIP" color="#9f6b15" bg="#fdf5e4" />
+                  {!pod.onTrackCount && !pod.reviewWithClCount && !pod.wipCount && (
+                    <span style={{ color: "var(--subtle)", fontSize: 11 }}>No beats assigned</span>
+                  )}
+                </td>
               </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ScriptTypeBadges({ ftCount = 0, rwLargeCount = 0, rwSmallCount = 0, rwOtherCount = 0, compact = false }) {
+  const rwTotal = rwLargeCount + rwSmallCount + rwOtherCount;
+  const parts = [];
+  if (ftCount > 0) {
+    parts.push(
+      <span key="ft" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#e8f4ea", color: "#2d5a3d", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>FT:{ftCount}</span>
+    );
+  }
+  if (rwLargeCount > 0) {
+    parts.push(
+      <span key="rwl" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#fdf0e6", color: "#c2601e", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW-L:{rwLargeCount}</span>
+    );
+  }
+  if (rwSmallCount > 0) {
+    parts.push(
+      <span key="rws" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#edf2fb", color: "#3b5bdb", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW-S:{rwSmallCount}</span>
+    );
+  }
+  if (rwOtherCount > 0) {
+    parts.push(
+      <span key="rwo" style={{
+        display: "inline-block", fontSize: compact ? 10 : 11, fontWeight: 600,
+        background: "#f3f0fb", color: "#6741d9", borderRadius: 4,
+        padding: compact ? "1px 5px" : "2px 6px", marginRight: 4,
+      }}>RW:{rwOtherCount}</span>
+    );
+  }
+  if (parts.length === 0 && rwTotal === 0 && ftCount === 0) return null;
+  return <span>{parts}</span>;
+}
+
+function FtRwCell({ ft, rw }) {
+  const total = ft + rw;
+  if (total === 0) return <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 13 }}>—</td>;
+  return (
+    <td style={{ textAlign: "center" }}>
+      <span style={{ fontWeight: 700 }}>{total}</span>
+      {" "}
+      <ScriptTypeBadges compact ftCount={ft} rwOtherCount={rw} />
+    </td>
+  );
+}
+
+function PodBreakdownTable({ rows = [], loading = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Breakdown by POD</div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        Scripts per workflow stage · date-filtered · FT = Fresh Take · RW = Rework
+      </div>
+      <div className="table-wrap">
+        <table className="ops-table overview-table">
+          <thead>
+            <tr>
+              <th>POD</th>
+              <th style={{ textAlign: "center" }}>Editorial</th>
+              <th style={{ textAlign: "center" }}>Ready for Prod</th>
+              <th style={{ textAlign: "center" }}>Production</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : safeRows.length === 0 ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>No data for the selected period.</td></tr>
+            ) : safeRows.map((pod) => (
+              <tr key={pod.podLeadName}>
+                <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+                <FtRwCell ft={pod.editorial?.ft ?? 0} rw={pod.editorial?.rw ?? 0} />
+                <FtRwCell ft={pod.readyForProd?.ft ?? 0} rw={pod.readyForProd?.rw ?? 0} />
+                <FtRwCell ft={pod.production?.ft ?? 0} rw={pod.production?.rw ?? 0} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PodThroughputRankingTable({ rows = [], loading = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const [expandedPods, setExpandedPods] = useState(new Set());
+
+  const togglePod = (podName) => {
+    setExpandedPods((prev) => {
+      const next = new Set(prev);
+      if (next.has(podName)) next.delete(podName);
+      else next.add(podName);
+      return next;
+    });
+  };
+
+  const tableRows = [];
+  for (const pod of safeRows) {
+    const beats = Array.isArray(pod.beats) ? pod.beats : [];
+    const isExpanded = expandedPods.has(pod.podLeadName);
+
+    tableRows.push(
+      <tr
+        key={`pod-${pod.podLeadName}`}
+        className="throughput-pod-summary-row"
+        style={{ cursor: "pointer", userSelect: "none" }}
+        onClick={() => togglePod(pod.podLeadName)}
+      >
+        <td style={{ fontWeight: 700 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              fontSize: 10, width: 16, height: 16, display: "inline-flex",
+              alignItems: "center", justifyContent: "center",
+              background: "var(--subtle-bg, #f0ece4)", borderRadius: 3,
+              color: "var(--subtle)", flexShrink: 0,
+            }}>
+              {isExpanded ? "▾" : "▸"}
+            </span>
+            {pod.podLeadName}
+          </span>
+        </td>
+        <td style={{ fontWeight: 700, textAlign: "center" }}>{formatNumber(pod.totalScripts)}</td>
+        <td>
+          <ScriptTypeBadges
+            compact
+            ftCount={pod.ftCount || 0}
+            rwLargeCount={0}
+            rwSmallCount={0}
+            rwOtherCount={pod.rwCount || 0}
+          />
+        </td>
+        <td style={{ color: "var(--subtle)", fontSize: 11 }}>
+          {beats.length} beat{beats.length !== 1 ? "s" : ""}
+        </td>
+      </tr>
+    );
+
+    if (isExpanded) {
+      for (let bi = 0; bi < beats.length; bi++) {
+        const beat = beats[bi];
+        tableRows.push(
+          <tr key={`beat-${pod.podLeadName}-${bi}-${beat.beatName}`} className="throughput-beat-row">
+            <td style={{ paddingLeft: 28, color: "var(--subtle)", fontSize: 12 }}>
+              {beat.showName ? `${beat.showName} — ` : ""}{beat.beatName}
+            </td>
+            <td style={{ textAlign: "center", color: "var(--subtle)", fontSize: 12 }}>
+              {formatNumber(beat.scriptCount)}
+            </td>
+            <td>
+              <ScriptTypeBadges
+                compact
+                ftCount={beat.ftCount || 0}
+                rwLargeCount={beat.rwLargeCount || 0}
+                rwSmallCount={beat.rwSmallCount || 0}
+                rwOtherCount={beat.rwOtherCount || 0}
+              />
+            </td>
+            <td style={{ fontSize: 12 }}>
+              {beat.inIdeation ? (
+                <span style={{ color: "#2d5a3d", fontWeight: 600 }}>Approved</span>
+              ) : (
+                <span style={{ color: "#9f2e2e", fontWeight: 600 }}>Not Approved</span>
+              )}
+            </td>
+          </tr>
+        );
+      }
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>POD throughput ranking</div>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        GA/GI assets · date-filtered · FT = Fresh Take · RW = Rework (L=large, S=small) · beat checked against Ideation tab
+      </div>
+      <div className="table-wrap">
+        <table className="ops-table overview-table">
+          <thead>
+            <tr>
+              <th>POD / Beat</th>
+              <th style={{ textAlign: "center" }}># Scripts</th>
+              <th>Type</th>
+              <th>Beats Approved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : tableRows.length > 0 ? (
+              tableRows
+            ) : (
+              <tr><td colSpan="4">No GA/GI scripts found for the selected date range.</td></tr>
             )}
           </tbody>
         </table>
@@ -159,12 +351,10 @@ function EditorialPodThroughputTable({ rows = [] }) {
 
 // ─── Sub-views ────────────────────────────────────────────────────────────────
 
-export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewError }) {
+export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewError, middleSlot }) {
   const unavailableMetricValue = overviewError ? "-" : null;
   const tatSummary = overviewData?.tatSummary || {};
   const tatDays = tatSummary?.averageTatDays;
-  const [podSectionOpen, setPodSectionOpen] = useState(true);
-
   const beatsCount = overviewData?.plannerBeatCount ?? 0;
   const beatsTarget = 25;
   const productionCount = overviewData?.inProductionBeatCount ?? 0;
@@ -172,34 +362,31 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
 
   return (
     <div className="section-stack">
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: podSectionOpen ? 8 : 0 }}>
-          <button
-            type="button"
-            className="as-link"
-            onClick={() => setPodSectionOpen((v) => !v)}
-            style={{ padding: 0, border: "none", background: "transparent", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}
-          >
-            {podSectionOpen ? "▾" : "▸"} POD throughput ranking
-          </button>
-        </div>
-        {podSectionOpen && (
-          <>
-            <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
-              Ranked by last week scripts pushed to production (Fresh Takes + GA/GI + approved beats), with writer drilldown.
-            </div>
-            <EditorialPodThroughputTable rows={Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : []} />
-          </>
-        )}
-      </div>
       <hr className="section-divider" />
       <div className="metric-grid three-col">
         <MetricCard
           label="Unique beats this week"
           className="hero-card"
           tone={getPipelineCardTone(beatsCount, beatsTarget)}
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-          hint={`Target: ${beatsTarget}+`}
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
+              </div>
+              <div className="metric-hint">{`Target: ${beatsTarget}+`}</div>
+              <DeltaBadge
+                current={beatsCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="LW releases"
+              />
+            </>
+          }
+        />
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
         />
         <MetricCard
           label="Moving to production"
@@ -230,11 +417,12 @@ export function OverviewCurrentWeek({ overviewData, overviewLoading, overviewErr
           tone={getClReviewDaysTone(overviewData?.averageClReviewDays)}
         />
       </div>
+      {middleSlot}
     </div>
   );
 }
 
-export function OverviewLastWeek({ overviewData, overviewLoading, overviewError }) {
+export function OverviewLastWeek({ overviewData, overviewLoading, overviewError, middleSlot }) {
   const unavailableMetricValue = overviewError ? "-" : null;
   const tatSummary = overviewData?.tatSummary || {};
   const tatDays = tatSummary?.averageTatDays;
@@ -247,16 +435,26 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError 
         <MetricCard
           label="Fresh takes released"
           className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeCount)}
-          hint="Unique attempts from Live tab"
           tone={getTargetCardTone(overviewData?.freshTakeCount, overviewData?.targetFloor)}
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeCount)}
+              </div>
+              <div className="metric-hint">Unique attempts from Live tab</div>
+              <DeltaBadge
+                current={overviewData?.freshTakeCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="prev week"
+              />
+            </>
+          }
         />
         <MetricCard
-          label="Production TAT"
-          value={overviewLoading ? "..." : unavailableMetricValue || (tatDays != null ? formatNumber(tatDays) : "-")}
-          unit="days"
-          hint="From last week's Live tab"
-          tone={getTatCardTone(tatDays, tatSummary?.targetTatDays)}
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
         />
         <MetricCard
           label="Hit rate"
@@ -273,6 +471,8 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError 
           }
         />
       </div>
+
+      {middleSlot}
 
       {Array.isArray(overviewData?.beatsFunnel) && overviewData.beatsFunnel.length > 0 && (
         <>
@@ -342,7 +542,7 @@ export function OverviewLastWeek({ overviewData, overviewLoading, overviewError 
   );
 }
 
-export function OverviewNextWeek({ overviewData, overviewLoading, overviewError }) {
+export function OverviewNextWeek({ overviewData, overviewLoading, overviewError, middleSlot }) {
   const unavailableMetricValue = overviewError ? "-" : null;
   const tatSummary = overviewData?.tatSummary || {};
   const tatDays = tatSummary?.averageTatDays;
@@ -364,9 +564,26 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError 
         <MetricCard
           label="Beats locked GTG"
           className="hero-card"
-          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
-          hint="Confirmed and ready to go"
           tone="positive"
+          body={
+            <>
+              <div className="metric-value">
+                {overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(beatsCount)}
+              </div>
+              <div className="metric-hint">Confirmed and ready to go</div>
+              <DeltaBadge
+                current={beatsCount}
+                previous={overviewData?.prevFreshTakeCount}
+                loading={overviewLoading}
+                label="LW releases"
+              />
+            </>
+          }
+        />
+        <MetricCard
+          label="Fresh Take in Production"
+          className="hero-card"
+          value={overviewLoading ? "..." : unavailableMetricValue || formatMetricValue(overviewData?.freshTakeInProductionCount ?? 0)}
         />
         {wipCount > 0 ? (
           <MetricCard
@@ -415,6 +632,8 @@ export function OverviewNextWeek({ overviewData, overviewLoading, overviewError 
           tone={getClReviewDaysTone(overviewData?.averageClReviewDays)}
         />
       </div>
+
+      {middleSlot}
 
       <hr className="section-divider" />
 
@@ -467,10 +686,11 @@ export default function OverviewContent({
   onIncludeNewShowsPodChange,
 }) {
   const notes = buildOverviewNotes({ overviewError, overviewData });
-  const sectionTitle = "Editorial funnel";
-  const contextLine = "What shipped and how it performed across the selected date range.";
   const weekLabel = overviewData?.weekLabel || "";
   const selectionMode = String(overviewData?.selectionMode || "");
+  const podThroughputRows = Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : [];
+  const editorialPodRows = Array.isArray(overviewData?.editorialPodRows) ? overviewData.editorialPodRows : [];
+  const podBreakdownRows = Array.isArray(overviewData?.podBreakdownRows) ? overviewData.podBreakdownRows : [];
 
   return (
     <ShareablePanel
@@ -493,19 +713,24 @@ export default function OverviewContent({
           <div key={note} className="warning-note">{note}</div>
         ))}
 
-        <div style={{ fontSize: 14, fontWeight: 500 }}>{sectionTitle}</div>
-        {weekLabel && <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: -10 }}>{weekLabel}</div>}
-        <div style={{ fontSize: 13, color: "var(--subtle)", fontStyle: "italic", marginTop: -8 }}>{contextLine}</div>
-
-        {selectionMode === "editorial_funnel" && (
-          <OverviewCurrentWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
-        )}
-        {selectionMode !== "editorial_funnel" && selectionMode !== "planned" && (
-          <OverviewLastWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
-        )}
-        {selectionMode === "planned" && (
-          <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} />
-        )}
+        {(() => {
+          const breakdownTable = <PodBreakdownTable rows={podBreakdownRows} loading={overviewLoading} />;
+          const throughputTable = <PodThroughputRankingTable rows={podThroughputRows} loading={overviewLoading} />;
+          if (selectionMode === "editorial_funnel") {
+            const middleSlot = (
+              <>
+                <PodEditorialStatusTable rows={editorialPodRows} loading={overviewLoading} />
+                {breakdownTable}
+                {throughputTable}
+              </>
+            );
+            return <OverviewCurrentWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={middleSlot} />;
+          }
+          if (selectionMode === "planned") {
+            return <OverviewNextWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={<>{breakdownTable}{throughputTable}</>} />;
+          }
+          return <OverviewLastWeek overviewData={overviewData} overviewLoading={overviewLoading} overviewError={overviewError} middleSlot={<>{breakdownTable}{throughputTable}</>} />;
+        })()}
 
         <hr className="section-divider" />
         <AcdCollapsibleTable

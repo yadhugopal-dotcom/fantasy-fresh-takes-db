@@ -190,7 +190,7 @@ export async function GET(request) {
 
       const adCode = String(row.assetCode || "").trim();
       const overrideKey = adCode.toLowerCase();
-      const overrideClassification = overrides.get(overrideKey);
+      const overrideClassification = overrides[overrideKey];
       const classification = overrideClassification || classifyEditorialBeat(row, weekStart, weekEnd, plannerBeatKeys);
       const writerKey = row.writerName.trim().toLowerCase();
 

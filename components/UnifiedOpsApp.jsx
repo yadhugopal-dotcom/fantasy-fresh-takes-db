@@ -406,6 +406,8 @@ export default function UnifiedOpsApp() {
   const [acdMetricsData, setAcdMetricsData] = useState(null);
   const [acdMetricsLoading, setAcdMetricsLoading] = useState(true);
   const [acdMetricsError, setAcdMetricsError] = useState("");
+  const [productionPipelineData, setProductionPipelineData] = useState(null);
+  const [productionPipelineLoading, setProductionPipelineLoading] = useState(false);
   const [acdTimeView, setAcdTimeView] = useState("rolling7");
   const [acdViewType, setAcdViewType] = useState("acd");
   const [busyAction, setBusyAction] = useState("");
@@ -1065,6 +1067,18 @@ export default function UnifiedOpsApp() {
   }, [activeView, acdMetricsData]);
 
   useEffect(() => {
+    if (activeView !== "production") return undefined;
+    let cancelled = false;
+    setProductionPipelineLoading(true);
+    fetch("/api/dashboard/production", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setProductionPipelineData(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setProductionPipelineLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeView]);
+
+  useEffect(() => {
     if (!notice) {
       return undefined;
     }
@@ -1513,6 +1527,8 @@ export default function UnifiedOpsApp() {
                   acdMetricsData={acdMetricsData}
                   acdMetricsLoading={acdMetricsLoading}
                   acdMetricsError={acdMetricsError}
+                  productionPipelineData={productionPipelineData}
+                  productionPipelineLoading={productionPipelineLoading}
                   acdTimeView={acdTimeView}
                   onTimeViewChange={setAcdTimeView}
                   acdViewType={acdViewType}

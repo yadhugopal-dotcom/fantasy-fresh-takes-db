@@ -148,12 +148,103 @@ function AcdAdherenceTable({ rows }) {
   );
 }
 
+// ─── Production Pipeline table ────────────────────────────────────────────────
+
+function ProductionPipelineTable({ rows = [], loading = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  const totalScripts = safeRows.reduce((s, r) => s + (r.total || 0), 0);
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 11, color: "var(--subtle)", marginBottom: 10 }}>
+        Current assets in the Production workflow sheets · {totalScripts} total
+      </div>
+      <div className="table-wrap">
+        <table className="ops-table">
+          <thead>
+            <tr>
+              <th>POD</th>
+              <th style={{ textAlign: "center" }}>Total</th>
+              <th>Workflow stage</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+            ) : safeRows.length === 0 ? (
+              <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>No scripts currently in Production tracker.</td></tr>
+            ) : safeRows.map((pod) => (
+              <tr key={`pod-${pod.podLeadName}`}>
+                <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+                <td style={{ fontWeight: 700, textAlign: "center" }}>{pod.total}</td>
+                <td>
+                  <span style={{ color: "var(--subtle)", fontSize: 11 }}>Assets grouped by POD</span>
+                </td>
+                <td style={{ color: "var(--subtle)", fontSize: 11 }}>{pod.total} assets</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function classifyFtRw(reworkType) {
+  const rt = String(reworkType || "").trim().toLowerCase();
+  if (!rt) return null;
+  if (rt === "fresh take" || rt === "fresh takes" || rt.startsWith("new q1") || rt.startsWith("ft")) return "ft";
+  return "rw";
+}
+
 // ─── View ─────────────────────────────────────────────────────────────────────
+
+function PipelineStageCard({ label, total, ft, rw, loading, accentColor, bgColor, subLabel = "" }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: 1, minWidth: 140,
+        background: "var(--panel)",
+        border: `1.5px solid ${accentColor}33`,
+        borderRadius: 12,
+        padding: "18px 20px",
+        textAlign: "center",
+        cursor: "default",
+        transform: hovered ? "scale(1.045) translateY(-2px)" : "scale(1) translateY(0)",
+        boxShadow: hovered ? `0 8px 24px ${accentColor}22` : "0 1px 4px rgba(0,0,0,0.06)",
+        transition: "transform 180ms ease, box-shadow 180ms ease",
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: accentColor, marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 36, fontWeight: 800, color: accentColor, lineHeight: 1 }}>
+        {loading ? "—" : (total ?? 0)}
+      </div>
+      {!loading && subLabel ? (
+        <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 6, fontWeight: 600 }}>{subLabel}</div>
+      ) : null}
+      {!loading && (ft > 0 || rw > 0) && (
+        <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 6, display: "flex", justifyContent: "center", gap: 8 }}>
+          <span style={{ background: "#e8f4ea", color: "#2d5a3d", borderRadius: 4, padding: "1px 6px", fontWeight: 600 }}>FT:{ft}</span>
+          <span style={{ background: "#fdf0e6", color: "#c2601e", borderRadius: 4, padding: "1px 6px", fontWeight: 600 }}>RW:{rw}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProductionContent({
   acdMetricsData,
   acdMetricsLoading,
   acdMetricsError,
+  productionPipelineData,
+  productionPipelineLoading,
   acdTimeView,
   onTimeViewChange,
   acdViewType,
@@ -164,6 +255,7 @@ export default function ProductionContent({
   copyingSection,
 }) {
   const [selectedAssetTypes, setSelectedAssetTypes] = useState(ASSET_TYPE_OPTIONS);
+  const [productionSubView, setProductionSubView] = useState("pipeline");
   const safeAcdMetricsData =
     acdMetricsData ||
     {
@@ -206,6 +298,9 @@ export default function ProductionContent({
     0
   );
   const filteredCdsAffected = new Set(filteredAdherenceIssueRows.map((row) => row.cdName || "")).size;
+  const pipelineRows = Array.isArray(productionPipelineData?.pipelineRows) ? productionPipelineData.pipelineRows : [];
+  const pipelineSummary = productionPipelineData?.pipelineSummary || null;
+  const podBreakdownRows = Array.isArray(productionPipelineData?.podBreakdownRows) ? productionPipelineData.podBreakdownRows : [];
 
   return (
     <div className="section-stack">
@@ -217,7 +312,126 @@ export default function ProductionContent({
         </div>
       ))}
 
-      <ShareablePanel
+      <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }} data-share-ignore="true">
+        <div style={{
+          display: "inline-flex", borderRadius: 999, padding: 4,
+          background: "var(--bg-deep)", border: "1px solid var(--border)",
+        }}>
+          {[["pipeline", "Production Pipeline"], ["throughput", "Production Throughput"]].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setProductionSubView(id)}
+              style={{
+                padding: "8px 22px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                borderRadius: 999, border: "none",
+                background: productionSubView === id
+                  ? "linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 72%, #8a4d2c))"
+                  : "transparent",
+                color: productionSubView === id ? "#fffdf8" : "var(--subtle)",
+                boxShadow: productionSubView === id ? "0 14px 22px -18px rgba(23, 34, 47, 0.9)" : "none",
+                transition: "all 150ms ease",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {productionSubView === "pipeline" && (
+        <ShareablePanel shareLabel="Production Pipeline" onShare={onShare} isSharing={copyingSection === "Production Pipeline"}>
+          <div style={{ background: "#2d5a3d", padding: "18px 24px", borderRadius: "10px 10px 0 0", marginBottom: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+              Production Pipeline Dashboard
+            </div>
+          </div>
+
+          <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 14 }}>
+              Pipeline Overview
+            </div>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <PipelineStageCard
+                label="Editorial"
+                total={pipelineSummary?.editorial.total}
+                ft={pipelineSummary?.editorial.ft}
+                rw={pipelineSummary?.editorial.rw}
+                loading={productionPipelineLoading}
+                accentColor="#3b6bdb"
+                subLabel="sheet assets"
+              />
+              <PipelineStageCard
+                label="Ready for Prod"
+                total={pipelineSummary?.readyForProd.total}
+                ft={pipelineSummary?.readyForProd.ft}
+                rw={pipelineSummary?.readyForProd.rw}
+                loading={productionPipelineLoading}
+                accentColor="#6741d9"
+                subLabel="sheet assets"
+              />
+              <PipelineStageCard
+                label="In Production"
+                total={pipelineSummary?.inProduction.total}
+                ft={pipelineSummary?.inProduction.ft}
+                rw={pipelineSummary?.inProduction.rw}
+                loading={productionPipelineLoading}
+                accentColor="#c2601e"
+                subLabel="sheet assets"
+              />
+              <PipelineStageCard
+                label="Live"
+                total={pipelineSummary?.live}
+                ft={0}
+                rw={0}
+                loading={productionPipelineLoading}
+                accentColor="#2d5a3d"
+                subLabel="sheet assets"
+              />
+            </div>
+          </div>
+
+          <div style={{ padding: "20px 24px 16px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 12 }}>
+              Breakdown by POD
+            </div>
+            <div className="table-wrap">
+              <table className="ops-table overview-table">
+                <thead>
+                  <tr>
+                    <th>POD</th>
+                    <th style={{ textAlign: "center" }}>Editorial</th>
+                    <th style={{ textAlign: "center" }}>Ready for Prod</th>
+                    <th style={{ textAlign: "center" }}>Production</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productionPipelineLoading ? (
+                    <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>Loading…</td></tr>
+                  ) : podBreakdownRows.length === 0 ? (
+                    <tr><td colSpan="4" style={{ color: "var(--subtle)" }}>No data available.</td></tr>
+                  ) : podBreakdownRows.map((pod) => (
+                    <tr key={pod.podLeadName}>
+                      <td style={{ fontWeight: 700 }}>{pod.podLeadName}</td>
+                      {[pod.editorial, pod.readyForProd, pod.production].map((stage, i) => (
+                        stage.total === 0
+                          ? <td key={i} style={{ textAlign: "center", color: "var(--subtle)" }}>—</td>
+                          : <td key={i} style={{ textAlign: "center" }}>
+                              <span style={{ fontWeight: 700 }}>{stage.total}</span>
+                            </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </ShareablePanel>
+      )}
+
+      {productionSubView === "throughput" && (
+        <>
+        <ShareablePanel
         shareLabel="Production ACD sync"
         onShare={onShare}
         isSharing={copyingSection === "Production ACD sync"}
@@ -360,6 +574,8 @@ export default function ProductionContent({
           <AcdAdherenceTable rows={filteredAdherenceIssueRows} />
         </div>
       </ShareablePanel>
+        </>
+      )}
     </div>
   );
 }

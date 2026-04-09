@@ -8,10 +8,14 @@ import {
   buildReleasedFreshTakeAttemptsForRange,
   buildTatSummaryFromRows,
   fetchAnalyticsLiveTabRows,
+  fetchEditorialWorkflowRows,
   fetchIdeationTabRows,
   fetchLiveTabRows,
+  fetchProductionWorkflowRows,
+  fetchReadyForProductionWorkflowRows,
   isAnalyticsEligibleProductionType,
   isFreshTakesLabel,
+  normalizePodLeadName,
 } from "../../../../lib/live-tab.js";
 import {
   buildPlannerBeatInventory,
@@ -122,8 +126,114 @@ function buildPlannerTimingSummary(plannerBeats) {
   };
 }
 
+function countFreshTakesInProduction(productionRows, startDate, endDate) {
+  return (Array.isArray(productionRows) ? productionRows : []).filter((row) => {
+    const eta = String(row?.etaToStartProd || "").slice(0, 10);
+    if (!eta) return false;
+    if (startDate && eta < startDate) return false;
+    if (endDate && eta > endDate) return false;
+    return true;
+  }).length;
+}
+
+const BREAKDOWN_POD_ORDER = ["Dan", "Josh", "Nishant", "Paul"];
+
+function classifyFtRw(reworkType) {
+  const rt = String(reworkType || "").trim().toLowerCase();
+  if (!rt) return null; // unknown — don't count in either bucket
+  if (rt === "fresh take" || rt === "fresh takes" || rt.startsWith("new q1") || rt.startsWith("ft")) return "ft";
+  return "rw";
+}
+
+function buildPodBreakdownRows(editorialRows, rfpRows, productionRows, { startDate, endDate } = {}) {
+  const podMap = new Map();
+
+  const getOrCreate = (rawName) => {
+    const pod = normalizePodLeadName(rawName);
+    if (!pod) return null;
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { ft: 0, rw: 0 },
+        readyForProd: { ft: 0, rw: 0 },
+        production: { ft: 0, rw: 0 },
+        productionPipeline: { ft: 0, rw: 0 },
+      });
+    }
+    return podMap.get(pod);
+  };
+
+  const inc = (bucket, type) => {
+    if (type === "ft") bucket.ft++;
+    else if (type === "rw") bucket.rw++;
+  };
+
+  const inRange = (date) => {
+    if (!date) return false;
+    const d = String(date).slice(0, 10);
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  };
+
+  // Editorial: no date filter — always show full pipeline state
+  for (const row of Array.isArray(editorialRows) ? editorialRows : []) {
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.editorial, classifyFtRw(row?.reworkType));
+  }
+
+  // RFP: filter by etaToStartProd if dates provided
+  for (const row of Array.isArray(rfpRows) ? rfpRows : []) {
+    if (startDate && !inRange(row?.etaToStartProd)) continue;
+    const entry = getOrCreate(row?.podLeadName || row?.podLeadRaw);
+    if (!entry) continue;
+    inc(entry.readyForProd, classifyFtRw(row?.reworkType));
+  }
+
+  // Production: always populate the map from editorial/rfp first, then count production
+  // productionPipeline = all items (no date filter), production = date-filtered throughput
+  for (const row of Array.isArray(productionRows) ? productionRows : []) {
+    const pod = normalizePodLeadName(row?.podLeadName || row?.podLeadRaw);
+    if (!pod) continue;
+    // Ensure pod entry exists (even if not in editorial/rfp)
+    if (!podMap.has(pod)) {
+      podMap.set(pod, {
+        podLeadName: pod,
+        editorial: { ft: 0, rw: 0 },
+        readyForProd: { ft: 0, rw: 0 },
+        production: { ft: 0, rw: 0 },
+        productionPipeline: { ft: 0, rw: 0 },
+      });
+    }
+    const entry = podMap.get(pod);
+    const type = classifyFtRw(row?.reworkType);
+    // Pipeline: all items
+    inc(entry.productionPipeline, type);
+    // Throughput: date-filtered
+    if (!startDate || inRange(row?.etaToStartProd)) {
+      inc(entry.production, type);
+    }
+  }
+
+  return [...podMap.values()].sort((a, b) => {
+    const ai = BREAKDOWN_POD_ORDER.indexOf(a.podLeadName);
+    const bi = BREAKDOWN_POD_ORDER.indexOf(b.podLeadName);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.podLeadName.localeCompare(b.podLeadName);
+  });
+}
+
 function normalizeText(value) {
   return String(value || "").trim();
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function normalizeKey(value) {
@@ -134,6 +244,47 @@ function makeBeatKey(showName, beatName) {
   const show = normalizeKey(showName);
   const beat = normalizeKey(beatName);
   return show && beat ? `${show}|${beat}` : "";
+}
+
+// Fuzzy beat name: strips leading articles, trailing version suffixes, punctuation
+// "The Thor" ≈ "Thor", "Phoenix v2" ≈ "Phoenix", "Spider-Man" ≈ "Spider Man"
+function fuzzyBeatNormalize(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^(the|a|an)\s+/i, "")
+    .replace(/\s+v\d+(\.\d+)?$/i, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Fuzzy show name: strips subtitles after ":" or "–" so
+// "My Vampire System: A Dragon's Revenge" ≈ "My Vampire System"
+function fuzzyShowNormalize(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*[:\u2013\u2014]\s*.*$/, "")  // strip subtitle after : – —
+    .replace(/^(the|a|an)\s+/i, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function makeFuzzyBeatKey(showName, beatName) {
+  const show = fuzzyShowNormalize(showName);
+  const beat = fuzzyBeatNormalize(beatName);
+  return beat ? `${show}|${beat}` : "";
+}
+
+// FT = Fresh Take / new q1, RW_L = large rework, RW_S = small rework, RW = other
+function classifyScriptType(reworkType) {
+  const rt = String(reworkType || "").trim().toLowerCase();
+  if (rt === "fresh take" || rt === "fresh takes" || rt.startsWith("new q1")) return "FT";
+  if (rt.includes("large")) return "RW_L";
+  if (rt.includes("small")) return "RW_S";
+  return "RW";
 }
 
 function isApprovedIdeationStatus(statusLabel) {
@@ -156,6 +307,84 @@ function getLatestAssetStage(asset) {
     if (stage) return stage;
   }
   return "";
+}
+
+function buildPodThroughputForRange(liveRows, ideationRows, startDate, endDate) {
+  // Two-tier ideation lookup:
+  // 1. Full key (show|beat) — most precise
+  // 2. Beat-only key — fallback when show names differ across sheets (e.g. "MVS" vs "My Vampire System: A Dragon's Revenge")
+  const ideationFullKeys = new Set();
+  const ideationBeatOnlyKeys = new Set();
+  for (const row of Array.isArray(ideationRows) ? ideationRows : []) {
+    const fullKey = makeFuzzyBeatKey(row?.showName, row?.beatName);
+    const beatOnly = fuzzyBeatNormalize(row?.beatName || "");
+    if (fullKey) ideationFullKeys.add(fullKey);
+    if (beatOnly) ideationBeatOnlyKeys.add(beatOnly);
+  }
+
+  // Filter live rows: date range + GA/GI only (Fresh Takes AND Reworks)
+  const filtered = (Array.isArray(liveRows) ? liveRows : []).filter((row) => {
+    const liveDate = String(row?.liveDate || "").slice(0, 10);
+    if (!liveDate || liveDate < startDate || liveDate > endDate) return false;
+    const type = getAssetTypeFromAssetCode(row?.assetCode);
+    return type === "GA" || type === "GI";
+  });
+
+  // Group by pod → beat, tracking FT/RW type counts
+  const podMap = new Map();
+  const ensurePod = (name) => {
+    const pod = normalizeText(name) || "Unknown POD";
+    if (!podMap.has(pod)) {
+      podMap.set(pod, { podLeadName: pod, totalScripts: 0, ftCount: 0, rwCount: 0, beats: new Map() });
+    }
+    return podMap.get(pod);
+  };
+
+  for (const row of filtered) {
+    const pod = ensurePod(row?.podLeadName);
+    pod.totalScripts += 1;
+
+    const scriptType = classifyScriptType(row?.reworkType);
+    if (scriptType === "FT") pod.ftCount += 1;
+    else pod.rwCount += 1;
+
+    const beatName = normalizeText(row?.beatName) || "Unknown Beat";
+    const showName = normalizeText(row?.showName) || "";
+    const fuzzyKey = makeFuzzyBeatKey(showName, beatName);
+    const beatOnlyKey = fuzzyBeatNormalize(beatName);
+    const inIdeation = Boolean(
+      (fuzzyKey && ideationFullKeys.has(fuzzyKey)) ||
+      (beatOnlyKey && ideationBeatOnlyKeys.has(beatOnlyKey))
+    );
+
+    const beatMapKey = fuzzyKey || normalizeKey(beatName);
+    if (!pod.beats.has(beatMapKey)) {
+      pod.beats.set(beatMapKey, {
+        beatName, showName,
+        scriptCount: 0, ftCount: 0, rwLargeCount: 0, rwSmallCount: 0, rwOtherCount: 0,
+        inIdeation,
+      });
+    }
+    const beat = pod.beats.get(beatMapKey);
+    beat.scriptCount += 1;
+    if (scriptType === "FT") beat.ftCount += 1;
+    else if (scriptType === "RW_L") beat.rwLargeCount += 1;
+    else if (scriptType === "RW_S") beat.rwSmallCount += 1;
+    else beat.rwOtherCount += 1;
+  }
+
+  return Array.from(podMap.values())
+    .sort((a, b) => b.totalScripts - a.totalScripts || a.podLeadName.localeCompare(b.podLeadName))
+    .map((pod) => ({
+      podLeadName: pod.podLeadName,
+      totalScripts: pod.totalScripts,
+      ftCount: pod.ftCount,
+      rwCount: pod.rwCount,
+      beats: Array.from(pod.beats.values()).sort((a, b) => {
+        if (a.inIdeation !== b.inIdeation) return a.inIdeation ? 1 : -1;
+        return b.scriptCount - a.scriptCount;
+      }),
+    }));
 }
 
 function buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows) {
@@ -313,12 +542,28 @@ function buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows) {
   );
 }
 
-function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [], ideationSourceError = "" } = {}) {
+function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [], productionRows = [], ideationSourceError = "" } = {}) {
   const timing = buildPlannerTimingSummary(plannerState.plannerBeats);
   const allProductionAssetCount = countAllAssetsWithStage(plannerState.pods, "production");
   const allLiveOnMetaAssetCount = countAllAssetsWithStage(plannerState.pods, "live_on_meta");
   const activeWriterCount = countActiveWritersInPods(plannerState.pods);
   const submittedByThursday = countAssetsSubmittedByDay(plannerState.pods, 3);
+  const podThroughputRows = buildPodThroughputForRange(
+    liveRows,
+    ideationRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
+  const editorialPodRows = buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows);
+
+  // Previous period comparison: use last week's actual releases as baseline
+  const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
+  const prevFreshTakeCount = lwFreshTakeRows.length;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -336,6 +581,7 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
     freshTakeCount: timing.plannedLiveCount,
     plannedReleaseCount: allLiveOnMetaAssetCount,
     inProductionBeatCount: allProductionAssetCount,
+    freshTakeInProductionCount,
     submittedByThursday,
     productionOutputCount: null,
     goodToGoBeatsCount: null,
@@ -352,12 +598,14 @@ function buildCurrentWeekPayload(plannerState, { liveRows = [], ideationRows = [
     scriptsPerWriter: activeWriterCount > 0 ? Number((allProductionAssetCount / activeWriterCount).toFixed(1)) : null,
     writingEmptyMessage: timing.writingEmptyMessage,
     clReviewEmptyMessage: timing.clReviewEmptyMessage,
-    podThroughputRows: buildCurrentEditorialPodRows(plannerState, liveRows, ideationRows),
+    podThroughputRows,
+    editorialPodRows,
+    prevFreshTakeCount,
     ideationSourceError,
   };
 }
 
-function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError = "" } = {}) {
+function buildNextWeekPayload(plannerState, ideationRows, productionRows, { ideationSourceError = "", prevFreshTakeCount = null } = {}) {
   const gtgMetrics = buildGoodToGoBeatsMetricsFromIdeationTab(ideationRows, "next", {
     sourceWeekOffsetWeeks: -1,
   });
@@ -366,6 +614,11 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
   const allProductionAssetCount = countAllAssetsWithStage(plannerState.pods, "production");
   const activeWriterCount = countActiveWritersInPods(plannerState.pods);
   const plannedReleaseCount = allLiveOnMetaAssetCount;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    plannerState.weekSelection.weekStart,
+    plannerState.weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -391,6 +644,7 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
     freshTakeCount: plannedReleaseCount,
     plannedReleaseCount,
     inProductionBeatCount: allProductionAssetCount,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary: timing.tatSummary,
@@ -403,6 +657,7 @@ function buildNextWeekPayload(plannerState, ideationRows, { ideationSourceError 
     scriptsPerWriter: activeWriterCount > 0 ? Number((allProductionAssetCount / activeWriterCount).toFixed(1)) : null,
     writingEmptyMessage: timing.writingEmptyMessage,
     clReviewEmptyMessage: timing.clReviewEmptyMessage,
+    prevFreshTakeCount,
     ideationSourceError,
   };
 }
@@ -505,7 +760,7 @@ function buildHitRateAndFunnelForSelection(analyticsRows, selection, { includeNe
   };
 }
 
-function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = false } = {}) {
+function buildLastWeekPayload(liveRows, analyticsRows, ideationRows, productionRows, { includeNewShowsPod = false } = {}) {
   const weekSelection = getWeekSelection("last");
   const weekLabel = formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveRows, "last");
@@ -514,6 +769,21 @@ function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = fa
     : allFreshTakeRows.filter((row) => !isNonBauPodLeadName(row?.podLeadName));
   const tatSummary = buildTatSummaryFromRows(freshTakeRows);
   const hitRateData = buildHitRateAndFunnelForSelection(analyticsRows, weekSelection, { includeNewShowsPod });
+  const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, weekSelection.weekStart, weekSelection.weekEnd);
+
+  // Previous week comparison (week before last)
+  const prevWeekStart = addDays(weekSelection.weekStart, -7);
+  const prevWeekEnd = addDays(weekSelection.weekEnd, -7);
+  const allPrevFreshTakeRows = buildReleasedFreshTakeAttemptsForRange(liveRows, prevWeekStart, prevWeekEnd);
+  const prevFreshTakeCount = (includeNewShowsPod
+    ? allPrevFreshTakeRows
+    : allPrevFreshTakeRows.filter((r) => !isNonBauPodLeadName(r?.podLeadName))
+  ).length;
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    weekSelection.weekStart,
+    weekSelection.weekEnd
+  );
 
   return {
     ok: true,
@@ -535,6 +805,7 @@ function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = fa
     freshTakeCount: freshTakeRows.length,
     plannedReleaseCount: null,
     inProductionBeatCount: null,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary,
@@ -544,11 +815,13 @@ function buildLastWeekPayload(liveRows, analyticsRows, { includeNewShowsPod = fa
     hitRateNumerator: hitRateData.hitRateNumerator,
     hitRateDenominator: hitRateData.hitRateDenominator,
     beatsFunnel: hitRateData.beatsFunnel,
+    podThroughputRows,
+    prevFreshTakeCount,
     analyticsSourceError: "",
   };
 }
 
-function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNewShowsPod = false } = {}) {
+function buildRangePayload(liveRows, analyticsRows, ideationRows, productionRows, rangeSelection, { includeNewShowsPod = false } = {}) {
   const rangeLabel = rangeSelection.rangeLabel || formatWeekRangeLabel(rangeSelection.startDate, rangeSelection.endDate);
   const allFreshTakeRows = buildReleasedFreshTakeAttemptsForRange(
     liveRows,
@@ -564,6 +837,12 @@ function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNew
     return liveDate && liveDate >= rangeSelection.startDate && liveDate <= rangeSelection.endDate;
   });
   const hitRateData = buildHitRateAndFunnelForSelection(filteredAnalyticsRows, rangeSelection, { includeNewShowsPod });
+  const podThroughputRows = buildPodThroughputForRange(liveRows, ideationRows, rangeSelection.startDate, rangeSelection.endDate);
+  const freshTakeInProductionCount = countFreshTakesInProduction(
+    productionRows,
+    rangeSelection.startDate,
+    rangeSelection.endDate
+  );
 
   return {
     ok: true,
@@ -586,6 +865,7 @@ function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNew
     freshTakeCount: freshTakeRows.length,
     plannedReleaseCount: null,
     inProductionBeatCount: null,
+    freshTakeInProductionCount,
     productionOutputCount: null,
     targetFloor: TARGET_FLOOR,
     tatSummary,
@@ -594,6 +874,7 @@ function buildRangePayload(liveRows, analyticsRows, rangeSelection, { includeNew
     hitRateNumerator: hitRateData.hitRateNumerator,
     hitRateDenominator: hitRateData.hitRateDenominator,
     beatsFunnel: hitRateData.beatsFunnel,
+    podThroughputRows,
     analyticsSourceError: "",
   };
 }
@@ -606,43 +887,62 @@ export async function GET(request) {
   const includeNewShowsPod = url.searchParams.get("includeNewShowsPod") === "true";
 
   try {
+    // Fetch editorial + RFP workflow rows for the breakdown table (shared across all periods)
+    const [editorialWorkflowResult, rfpWorkflowResult] = await Promise.all([
+      fetchEditorialWorkflowRows()
+        .then((result) => ({ rows: result?.rows || [] }))
+        .catch(() => ({ rows: [] })),
+      fetchReadyForProductionWorkflowRows()
+        .then((result) => ({ rows: result?.rows || [] }))
+        .catch(() => ({ rows: [] })),
+    ]);
+
     if (startDate || endDate) {
-      const [{ rows: liveRows }, analyticsResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
-          .catch((error) => ({
-            rows: [],
-            error: error?.message || "Analytics source unavailable.",
-          })),
+          .catch((error) => ({ rows: [], error: error?.message || "Analytics source unavailable." })),
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch(() => ({ rows: [], error: "" })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
       const rangeSelection = buildDateRangeSelection({ startDate, endDate });
       return NextResponse.json({
-        ...buildRangePayload(liveRows, analyticsResult.rows, rangeSelection, { includeNewShowsPod }),
+        ...buildRangePayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, rangeSelection, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: rangeSelection.startDate, endDate: rangeSelection.endDate }),
       });
     }
 
     if (period === "last") {
-      const [{ rows: liveRows }, analyticsResult] = await Promise.all([
+      const [{ rows: liveRows }, analyticsResult, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchAnalyticsLiveTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
-          .catch((error) => ({
-            rows: [],
-            error: error?.message || "Analytics source unavailable.",
-          })),
+          .catch((error) => ({ rows: [], error: error?.message || "Analytics source unavailable." })),
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch(() => ({ rows: [], error: "" })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
+      const lastWeekSelection = getWeekSelection("last");
       return NextResponse.json({
-        ...buildLastWeekPayload(liveRows, analyticsResult.rows, { includeNewShowsPod }),
+        ...buildLastWeekPayload(liveRows, analyticsResult.rows, ideationResult.rows, productionResult.rows, { includeNewShowsPod }),
         analyticsSourceError: analyticsResult.error,
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: lastWeekSelection.weekStart, endDate: lastWeekSelection.weekEnd }),
       });
     }
 
     const plannerState = await loadPlannerWeek(period, { includeNewShowsPod });
 
     if (period === "current") {
-      const [{ rows: liveRows }, ideationResult] = await Promise.all([
+      const [{ rows: liveRows }, ideationResult, productionResult] = await Promise.all([
         fetchLiveTabRows(),
         fetchIdeationTabRows()
           .then((result) => ({ rows: result?.rows || [], error: "" }))
@@ -652,29 +952,44 @@ export async function GET(request) {
               error?.message ||
               "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
           })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
       ]);
-      return NextResponse.json(
-        buildCurrentWeekPayload(plannerState, {
+      return NextResponse.json({
+        ...buildCurrentWeekPayload(plannerState, {
           liveRows,
           ideationRows: ideationResult.rows,
+          productionRows: productionResult.rows,
           ideationSourceError: ideationResult.error,
-        })
-      );
+        }),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: plannerState.weekSelection.weekStart, endDate: plannerState.weekSelection.weekEnd }),
+      });
     }
 
     if (period === "next") {
-      const ideationResult = await fetchIdeationTabRows()
-        .then((result) => ({ rows: result?.rows || [], error: "" }))
-        .catch((error) => ({
-          rows: [],
-          error:
-            error?.message || "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
-        }));
-      return NextResponse.json(
-        buildNextWeekPayload(plannerState, ideationResult.rows, {
+      const [ideationResult, liveResult, productionResult] = await Promise.all([
+        fetchIdeationTabRows()
+          .then((result) => ({ rows: result?.rows || [], error: "" }))
+          .catch((error) => ({
+            rows: [],
+            error: error?.message || "The Ideation tracker tab is not accessible. Check the sheet sharing settings.",
+          })),
+        fetchLiveTabRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
+        fetchProductionWorkflowRows()
+          .then((result) => ({ rows: result?.rows || [] }))
+          .catch(() => ({ rows: [] })),
+      ]);
+      const lwFreshTakeRows = buildReleasedFreshTakeAttemptsForPeriod(liveResult.rows, "last");
+      return NextResponse.json({
+        ...buildNextWeekPayload(plannerState, ideationResult.rows, productionResult.rows, {
           ideationSourceError: ideationResult.error,
-        })
-      );
+          prevFreshTakeCount: lwFreshTakeRows.length,
+        }),
+        podBreakdownRows: buildPodBreakdownRows(editorialWorkflowResult.rows, rfpWorkflowResult.rows, productionResult.rows, { startDate: plannerState.weekSelection.weekStart, endDate: plannerState.weekSelection.weekEnd }),
+      });
     }
   } catch (error) {
     return NextResponse.json(
