@@ -694,7 +694,9 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                     <td>{row.showName || "-"}</td>
                     <td>{row.beatName || "-"}</td>
                     <td>{formatMetricValue(row.attempts)}</td>
-                    <td>{formatMetricValue(row.successCount)}</td>
+                    <td className={row.successCount > 0 ? "overview-genai-success-value" : ""}>
+                      {formatMetricValue(row.successCount)}
+                    </td>
                     <td>{row.hitRate != null ? formatPercent(row.hitRate) : "-"}</td>
                   </tr>
                 ))

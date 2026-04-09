@@ -1526,7 +1526,16 @@ select {
 }
 
 .overview-genai-success-row {
-  background: color-mix(in srgb, var(--green-bg) 72%, transparent);
+  background: color-mix(in srgb, var(--green-bg) 82%, var(--card) 18%);
+}
+
+.overview-genai-success-row td {
+  background: color-mix(in srgb, var(--green-bg) 82%, var(--card) 18%);
+}
+
+.overview-genai-success-value {
+  color: var(--forest);
+  font-weight: 800;
 }
 
 .overview-guidelines-card {
