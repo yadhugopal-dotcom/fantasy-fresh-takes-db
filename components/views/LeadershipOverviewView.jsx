@@ -471,71 +471,91 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             Full Gen AI source warning: {overviewData.fullGenAiSourceError}
           </div>
         ) : null}
-        <div className="table-wrap">
-          <table className="ops-table overview-table">
-            <thead>
-              <tr>
-                <th>Show</th>
-                <th>Beat</th>
-                <th>Ads</th>
-                <th>Successful</th>
-                <th>Hit rate</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {fullGenAiByBeat.length > 0 ? (
-                fullGenAiByBeat.flatMap((row) => {
+        <table className="beats-funnel-table">
+          <colgroup>
+            <col className="col-show" />
+            <col className="col-beat" />
+            <col className="col-attempts" />
+            <col className="col-success" />
+            <col style={{ width: 28 }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>SHOW</th>
+              <th>BEAT</th>
+              <th className="col-right">ATTEMPTS</th>
+              <th className="col-right">SUCCESSFUL</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {fullGenAiByBeat.length > 0 ? (() => {
+              const rendered = [];
+              let i = 0;
+              while (i < fullGenAiByBeat.length) {
+                const showName = fullGenAiByBeat[i].showName;
+                let j = i;
+                while (j < fullGenAiByBeat.length && fullGenAiByBeat[j].showName === showName) j++;
+                const span = j - i;
+                for (let k = i; k < j; k++) {
+                  const row = fullGenAiByBeat[k];
                   const angleKey = `${row.showName}|${row.beatName}`;
                   const isExpanded = Boolean(expandedAngles[angleKey]);
-                  return [
+                  rendered.push(
                     <tr
                       key={angleKey}
-                      className={row.successCount > 0 ? "overview-genai-success-row" : ""}
+                      className={row.successCount > 0 ? "beats-funnel-success" : ""}
                       style={{ cursor: "pointer" }}
                       onClick={() => setExpandedAngles((prev) => ({ ...prev, [angleKey]: !prev[angleKey] }))}
                     >
-                      <td>{row.showName || "-"}</td>
+                      {k === i && (
+                        <td rowSpan={span + fullGenAiByBeat.slice(i, j).reduce((sum, r) => sum + (expandedAngles[`${r.showName}|${r.beatName}`] ? r.ads.length + 1 : 0), 0)} style={{ fontSize: 12, fontWeight: 500, color: "var(--subtle)" }}>
+                          {row.showName || "-"}
+                        </td>
+                      )}
                       <td>{row.beatName || "-"}</td>
-                      <td>{formatMetricValue(row.attempts)}</td>
-                      <td className={row.successCount > 0 ? "overview-genai-success-value" : ""}>
-                        {formatMetricValue(row.successCount)}
+                      <td className="col-right" style={{ fontWeight: 500 }}>{row.attempts}</td>
+                      <td className="col-right" style={{ fontWeight: 500, color: row.successCount > 0 ? "#2d5a3d" : "var(--gray-light, #D3D1C7)" }}>
+                        {row.successCount}
                       </td>
-                      <td>{row.hitRate != null ? formatPercent(row.hitRate) : "-"}</td>
                       <td style={{ textAlign: "center", color: "var(--muted)", fontSize: 11 }}>{isExpanded ? "▲" : "▼"}</td>
-                    </tr>,
-                    ...(isExpanded ? [
+                    </tr>
+                  );
+                  if (isExpanded) {
+                    rendered.push(
                       <tr key={`${angleKey}-hdr`} style={{ background: "var(--bg-subtle, #f5f0e8)" }}>
-                        <td colSpan={2} style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", paddingLeft: 28 }}>Asset Code</td>
-                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CPI</td>
-                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>True Completion</td>
-                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTR</td>
-                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTI</td>
-                      </tr>,
-                      ...row.ads.map((ad) => (
-                        <tr
-                          key={`${angleKey}-${ad.assetCode}`}
-                          style={{ background: "var(--bg-subtle, #f5f0e8)" }}
-                          className={ad.success ? "overview-genai-success-row" : ""}
-                        >
-                          <td colSpan={2} style={{ paddingLeft: 28, fontSize: 12 }}>{ad.assetCode || "-"}</td>
-                          <td style={{ fontSize: 12 }}>{ad.cpiUsd != null ? `$${ad.cpiUsd.toFixed(2)}` : "-"}</td>
-                          <td style={{ fontSize: 12 }}>{ad.absoluteCompletionPct != null ? formatPercent(ad.absoluteCompletionPct) : "-"}</td>
-                          <td style={{ fontSize: 12 }}>{ad.ctrPct != null ? formatPercent(ad.ctrPct) : "-"}</td>
-                          <td style={{ fontSize: 12 }}>{ad.clickToInstall != null ? formatPercent(ad.clickToInstall) : "-"}</td>
+                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", paddingLeft: 20 }}>Asset Code</td>
+                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CPI</td>
+                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>Completion</td>
+                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTR / CTI</td>
+                        <td></td>
+                      </tr>
+                    );
+                    for (const ad of row.ads) {
+                      rendered.push(
+                        <tr key={`${angleKey}-${ad.assetCode}`} style={{ background: "var(--bg-subtle, #f5f0e8)" }} className={ad.success ? "beats-funnel-success" : ""}>
+                          <td style={{ paddingLeft: 20, fontSize: 12 }}>{ad.assetCode || "-"}</td>
+                          <td className="col-right" style={{ fontSize: 12 }}>{ad.cpiUsd != null ? `$${ad.cpiUsd.toFixed(2)}` : "-"}</td>
+                          <td className="col-right" style={{ fontSize: 12 }}>{ad.absoluteCompletionPct != null ? formatPercent(ad.absoluteCompletionPct) : "-"}</td>
+                          <td className="col-right" style={{ fontSize: 12 }}>
+                            {ad.ctrPct != null ? formatPercent(ad.ctrPct) : "-"} / {ad.clickToInstall != null ? formatPercent(ad.clickToInstall) : "-"}
+                          </td>
+                          <td></td>
                         </tr>
-                      )),
-                    ] : []),
-                  ];
-                })
-              ) : (
-                <tr>
-                  <td colSpan="6">No Full Gen AI rows for this filter yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      );
+                    }
+                  }
+                }
+                i = j;
+              }
+              return rendered;
+            })() : (
+              <tr>
+                <td colSpan="5">No Full Gen AI rows for this filter yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
         <div className="overview-guidelines-card">
           <div className="overview-guidelines-title">Success definition and guidelines</div>
           <div className="overview-guidelines-line">
