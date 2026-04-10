@@ -1,8 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { ANALYTICS_LEGEND_FALLBACK, getAnalyticsLegendToneClass } from "./shared.jsx";
 
+function fmtNum(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : "-";
+}
+
 export default function DetailsContent({ acdMetricsData, acdMetricsLoading, acdMetricsError, analyticsData }) {
+  const [showRawRows, setShowRawRows] = useState(false);
   const trackedTeams = Array.isArray(acdMetricsData?.trackedTeams) ? acdMetricsData.trackedTeams : [];
   const legendItems = Array.isArray(analyticsData?.legend) && analyticsData.legend.length > 0
     ? analyticsData.legend
@@ -86,6 +94,61 @@ export default function DetailsContent({ acdMetricsData, acdMetricsLoading, acdM
           </div>
         </section>
       </div>
+
+      <section className="panel-card">
+        <div className="panel-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>Live sheet rows ({Array.isArray(analyticsData?.liveSheetRows) ? analyticsData.liveSheetRows.length : 0} total)</span>
+          <button
+            type="button"
+            className="ghost-button"
+            style={{ fontSize: 12, padding: "2px 8px" }}
+            onClick={() => setShowRawRows((v) => !v)}
+          >
+            {showRawRows ? "Hide" : "Show"}
+          </button>
+        </div>
+        <div className="section-subtitle">Raw rows fetched from the analytics live tab before any filtering or deduplication.</div>
+        {showRawRows && (
+          <div className="table-wrap" style={{ marginTop: 12 }}>
+            <table className="ops-table" style={{ fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Code</th>
+                  <th>Show</th>
+                  <th>Angle</th>
+                  <th>Type</th>
+                  <th className="col-right">CPI</th>
+                  <th className="col-right">Completion%</th>
+                  <th className="col-right">CTR%</th>
+                  <th className="col-right">CTI%</th>
+                  <th className="col-right">Thruplays</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(analyticsData?.liveSheetRows) && analyticsData.liveSheetRows.length > 0 ? (
+                  analyticsData.liveSheetRows.map((row, i) => (
+                    <tr key={`raw-${i}`}>
+                      <td style={{ whiteSpace: "nowrap" }}>{row.liveDate || "-"}</td>
+                      <td style={{ fontFamily: "monospace" }}>{row.assetCode || "-"}</td>
+                      <td>{row.showName || "-"}</td>
+                      <td>{row.beatName || "-"}</td>
+                      <td style={{ color: "var(--subtle)", fontSize: 11 }}>{row.productionType || "-"}</td>
+                      <td className="col-right">{fmtNum(row.cpiUsd)}</td>
+                      <td className="col-right">{fmtNum(row.absoluteCompletionPct)}</td>
+                      <td className="col-right">{fmtNum(row.ctrPct)}</td>
+                      <td className="col-right">{fmtNum(row.clickToInstall)}</td>
+                      <td className="col-right">{fmtNum(row.thruPlayTo3sRatio)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan="10">No live sheet rows available.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="panel-card">
         <div className="panel-title">Next step logic</div>

@@ -474,6 +474,18 @@ export async function GET(request) {
     const [{ rows }, actionedState] = await Promise.all([fetchAnalyticsLiveTabRows(), readActionedState()]);
     const eligibleRows = buildDecoratedAnalyticsRows(rows);
     const analyticsRows = eligibleRows.filter((row) => hasReadableCpi(row?.cpiUsd));
+    const liveSheetRows = (Array.isArray(rows) ? rows : []).map((row) => ({
+      assetCode: String(row?.assetCode || "").trim(),
+      showName: String(row?.showName || "").trim(),
+      beatName: String(row?.beatName || "").trim(),
+      productionType: String(row?.productionType || "").trim(),
+      liveDate: String(row?.liveDate || "").trim(),
+      cpiUsd: row?.cpiUsd ?? null,
+      absoluteCompletionPct: row?.absoluteCompletionPct ?? null,
+      ctrPct: row?.ctrPct ?? null,
+      clickToInstall: row?.clickToInstall ?? null,
+      thruPlayTo3sRatio: row?.thruPlayTo3sRatio ?? null,
+    })).sort((a, b) => String(b.liveDate).localeCompare(String(a.liveDate)));
 
     // Support multi-week: "weeks=2" means current + last week
     let selectedWeekKeys;
@@ -550,6 +562,7 @@ export async function GET(request) {
           ? ""
           : `No analytics rows are available for ${formatWeekRangeLabel(selectedWeekKey, selectedWeekEnd)} yet.`,
       rows: tableRows,
+      liveSheetRows,
     });
   } catch (error) {
     return NextResponse.json({
@@ -566,6 +579,7 @@ export async function GET(request) {
       hiddenMetricKeys: ANALYTICS_METRIC_COLUMNS.filter((column) => column.hiddenByDefault).map((column) => column.key),
       emptyStateMessage: "Analytics is temporarily unavailable. Check Supabase and sheet credentials.",
       rows: [],
+      liveSheetRows: [],
     });
   }
 }
