@@ -38,7 +38,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const [expandedPods, setExpandedPods] = useState({});
   const [section2Mode, setSection2Mode] = useState("custom");
   const [section3ViewType, setSection3ViewType] = useState("acd");
-  const [expandedAngles, setExpandedAngles] = useState({});
   const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
   const allBeatRows = Array.isArray(overviewData?.allBeatRows) ? overviewData.allBeatRows : beatRows;
   const workflowRows = Array.isArray(overviewData?.workflowRows) ? overviewData.workflowRows : [];
@@ -205,34 +204,16 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const fullGenAiByBeat = useMemo(() =>
     Array.from(
       scopedFullGenAiRows.reduce((map, row) => {
-      const key = `${row.showName}|${row.beatName}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          showName: row.showName,
-          beatName: row.beatName,
-          attempts: 0,
-          successCount: 0,
-          ads: [],
-        });
-      }
-      const entry = map.get(key);
-      entry.attempts += 1;
-      if (row.success) entry.successCount += 1;
-      entry.ads.push({
-        assetCode: row.assetCode,
-        success: row.success,
-        cpiUsd: row.cpiUsd,
-        absoluteCompletionPct: row.absoluteCompletionPct,
-        ctrPct: row.ctrPct,
-        clickToInstall: row.clickToInstall,
-      });
-      return map;
+        const key = `${row.showName}|${row.beatName}`;
+        if (!map.has(key)) {
+          map.set(key, { showName: row.showName, beatName: row.beatName, attempts: 0, successCount: 0 });
+        }
+        const entry = map.get(key);
+        entry.attempts += 1;
+        if (row.success) entry.successCount += 1;
+        return map;
       }, new Map()).values()
     )
-      .map((entry) => ({
-        ...entry,
-        hitRate: entry.attempts > 0 ? Number(((entry.successCount / entry.attempts) * 100).toFixed(1)) : null,
-      }))
       .sort((a, b) => b.attempts - a.attempts || a.showName.localeCompare(b.showName) || a.beatName.localeCompare(b.beatName))
   , [scopedFullGenAiRows]);
   const successfulAdsCount = scopedFullGenAiRows.filter((r) => r.success).length;
@@ -477,7 +458,6 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             <col className="col-beat" />
             <col className="col-attempts" />
             <col className="col-success" />
-            <col style={{ width: 28 }} />
           </colgroup>
           <thead>
             <tr>
@@ -485,73 +465,48 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
               <th>BEAT</th>
               <th className="col-right">ATTEMPTS</th>
               <th className="col-right">SUCCESSFUL</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
             {fullGenAiByBeat.length > 0 ? (() => {
+              const rows = fullGenAiByBeat;
               const rendered = [];
               let i = 0;
-              while (i < fullGenAiByBeat.length) {
-                const showName = fullGenAiByBeat[i].showName;
+              while (i < rows.length) {
+                const showName = rows[i].showName;
                 let j = i;
-                while (j < fullGenAiByBeat.length && fullGenAiByBeat[j].showName === showName) j++;
+                while (j < rows.length && rows[j].showName === showName) j++;
                 const span = j - i;
                 for (let k = i; k < j; k++) {
-                  const row = fullGenAiByBeat[k];
-                  const angleKey = `${row.showName}|${row.beatName}`;
-                  const isExpanded = Boolean(expandedAngles[angleKey]);
+                  const row = rows[k];
+                  const isSuccess = row.successCount > 0;
                   rendered.push(
-                    <tr
-                      key={angleKey}
-                      className={row.successCount > 0 ? "beats-funnel-success" : ""}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => setExpandedAngles((prev) => ({ ...prev, [angleKey]: !prev[angleKey] }))}
-                    >
+                    <tr key={`${row.showName}-${row.beatName}`} className={isSuccess ? "beats-funnel-success" : ""}>
                       {k === i && (
-                        <td rowSpan={span + fullGenAiByBeat.slice(i, j).reduce((sum, r) => sum + (expandedAngles[`${r.showName}|${r.beatName}`] ? r.ads.length + 1 : 0), 0)} style={{ fontSize: 12, fontWeight: 500, color: "var(--subtle)" }}>
-                          {row.showName || "-"}
+                        <td rowSpan={span} style={{ fontSize: 12, fontWeight: 500, color: "var(--subtle)" }}>
+                          {row.showName}
                         </td>
                       )}
-                      <td>{row.beatName || "-"}</td>
+                      <td>{row.beatName}</td>
                       <td className="col-right" style={{ fontWeight: 500 }}>{row.attempts}</td>
-                      <td className="col-right" style={{ fontWeight: 500, color: row.successCount > 0 ? "#2d5a3d" : "var(--gray-light, #D3D1C7)" }}>
+                      <td
+                        className="col-right"
+                        style={{
+                          fontWeight: 500,
+                          color: row.successCount > 0 ? "#2d5a3d" : "var(--gray-light, #D3D1C7)",
+                        }}
+                      >
                         {row.successCount}
                       </td>
-                      <td style={{ textAlign: "center", color: "var(--muted)", fontSize: 11 }}>{isExpanded ? "▲" : "▼"}</td>
                     </tr>
                   );
-                  if (isExpanded) {
-                    rendered.push(
-                      <tr key={`${angleKey}-hdr`} style={{ background: "var(--bg-subtle, #f5f0e8)" }}>
-                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", paddingLeft: 20 }}>Asset Code</td>
-                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CPI</td>
-                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>Completion</td>
-                        <td className="col-right" style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTR / CTI</td>
-                        <td></td>
-                      </tr>
-                    );
-                    for (const ad of row.ads) {
-                      rendered.push(
-                        <tr key={`${angleKey}-${ad.assetCode}`} style={{ background: "var(--bg-subtle, #f5f0e8)" }} className={ad.success ? "beats-funnel-success" : ""}>
-                          <td style={{ paddingLeft: 20, fontSize: 12 }}>{ad.assetCode || "-"}</td>
-                          <td className="col-right" style={{ fontSize: 12 }}>{ad.cpiUsd != null ? `$${ad.cpiUsd.toFixed(2)}` : "-"}</td>
-                          <td className="col-right" style={{ fontSize: 12 }}>{ad.absoluteCompletionPct != null ? formatPercent(ad.absoluteCompletionPct) : "-"}</td>
-                          <td className="col-right" style={{ fontSize: 12 }}>
-                            {ad.ctrPct != null ? formatPercent(ad.ctrPct) : "-"} / {ad.clickToInstall != null ? formatPercent(ad.clickToInstall) : "-"}
-                          </td>
-                          <td></td>
-                        </tr>
-                      );
-                    }
-                  }
                 }
                 i = j;
               }
               return rendered;
             })() : (
               <tr>
-                <td colSpan="5">No Full Gen AI rows for this filter yet.</td>
+                <td colSpan="4">No Full Gen AI rows for this filter yet.</td>
               </tr>
             )}
           </tbody>
@@ -564,7 +519,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
           <div className="overview-guidelines-line">
             A successful ad passes all formula thresholds: Amount Spent ≥ 100, Q1 Completion &gt; 10%, CTI ≥ 12%, True Completion ≥ 1.8%, CPI ≤ 12.
           </div>
-          <div className="overview-guidelines-line">Hit rate = (successful ads / total ads) × 100. Click any row to see per-ad metrics.</div>
+          <div className="overview-guidelines-line">Hit rate = (successful ads / total ads) × 100.</div>
           <div className="overview-guidelines-line">Rows shaded light green have one or more successful ads.</div>
         </div>
       </section>
