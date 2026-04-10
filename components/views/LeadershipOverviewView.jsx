@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import {
-  AcdCollapsibleTable,
+  AcdLeaderboardChart,
   MetricCard,
+  ToggleGroup,
   formatNumber,
   formatMetricValue,
   formatPercent,
@@ -18,54 +19,6 @@ const FOCUS_POD_LEADS = [
   { key: "gilatar", label: "Gilatar" },
   { key: "woodward", label: "Woodward" },
 ];
-const SECTION3_ASSET_TYPE_OPTIONS = ["GA", "GI"];
-const SECTION3_ASSET_TYPE_LABELS = {
-  GA: "Q1 manual + thumbnail",
-  GI: "Auto AI",
-};
-const SECTION3_MINUTES_PER_ASSET = 2.5;
-const SECTION3_ALLOWED_NAMES = new Set([
-  "Pauras Hinge",
-  "Ankit D Bagde",
-  "Vivek Anand",
-  "Swagat Karmakar",
-  "Manthan M Kanani",
-  "Hitesh Gawankar",
-  "Priyesh Kava",
-  "Sakshi Nandwani",
-  "Daanish Narayan",
-  "Tanya Singh",
-  "Ankur Saraf",
-  "Umesh Bahuguna",
-  "Varun Thomas",
-]);
-
-function detectAssetTypeFromCode(assetCode) {
-  const normalized = String(assetCode || "").trim().toUpperCase();
-  if (normalized.startsWith("GA")) return "GA";
-  if (normalized.startsWith("GI")) return "GI";
-  if (normalized.startsWith("GU")) return "GU";
-  return "OTHER";
-}
-
-function countWeekdaysInRange(startDate, endDate) {
-  const start = String(startDate || "");
-  const end = String(endDate || "");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-    return 5;
-  }
-  const from = new Date(`${start}T00:00:00Z`);
-  const to = new Date(`${end}T00:00:00Z`);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) {
-    return 5;
-  }
-  let count = 0;
-  for (const day = new Date(from); day <= to; day.setUTCDate(day.getUTCDate() + 1)) {
-    const dow = day.getUTCDay();
-    if (dow !== 0 && dow !== 6) count += 1;
-  }
-  return Math.max(1, count);
-}
 
 function resolveFocusPodLabel(podLeadName) {
   const normalized = normalizePodFilterKey(podLeadName || "");
@@ -77,21 +30,14 @@ function resolveFocusPodLabel(podLeadName) {
   return "";
 }
 
-function sanitizeAllowedOwnerName(value) {
-  const cleaned = String(value || "").trim().replace(/\s+/g, " ");
-  if (!cleaned) return "";
-  if (cleaned.includes(",") || cleaned.includes("&")) return "";
-  return SECTION3_ALLOWED_NAMES.has(cleaned) ? cleaned : "";
-}
 
 export default function LeadershipOverviewContent({ leadershipOverviewData, leadershipOverviewLoading, leadershipOverviewError, onNavigate, acdMetricsData, acdMetricsLoading }) {
   const overviewData = leadershipOverviewData || null;
   const overviewLoading = Boolean(leadershipOverviewLoading);
   const overviewError = leadershipOverviewError || "";
   const [expandedPods, setExpandedPods] = useState({});
-  const [expandedCds, setExpandedCds] = useState({});
   const [section2Mode, setSection2Mode] = useState("custom");
-  const [section3AssetTypes, setSection3AssetTypes] = useState(SECTION3_ASSET_TYPE_OPTIONS);
+  const [section3ViewType, setSection3ViewType] = useState("acd");
   const [expandedAngles, setExpandedAngles] = useState({});
   const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
   const allBeatRows = Array.isArray(overviewData?.allBeatRows) ? overviewData.allBeatRows : beatRows;
@@ -231,101 +177,30 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const allPodsExpanded =
     outputData.podRows.length > 0 &&
     outputData.podRows.every((row) => Boolean(expandedPods[row.podLeadName]));
-  const weekdayCount = useMemo(
-    () => countWeekdaysInRange(overviewData?.weekStart, overviewData?.weekEnd),
-    [overviewData?.weekStart, overviewData?.weekEnd]
-  );
+  const overviewThroughputRows = useMemo(() => {
+    const weekStart = overviewData?.weekStart;
+    const weekEnd = overviewData?.weekEnd;
+    const dailyRows = Array.isArray(acdMetricsData?.dailyRows) ? acdMetricsData.dailyRows : [];
+    if (!weekStart || !weekEnd || dailyRows.length === 0) return [];
 
-  const throughputByCd = useMemo(() => {
-    const cdMap = new Map();
-    const selectedTypes = new Set(section3AssetTypes);
-    const throughputRows = scopedWorkflowRows.filter((row) => {
-      if (!(row.source === "production" || row.source === "live")) return false;
-      const assetType = detectAssetTypeFromCode(row?.assetCode || row?.scriptCode);
-      return selectedTypes.has(assetType);
+    const filtered = dailyRows.filter((row) => {
+      const d = String(row.workDate || "");
+      return d >= weekStart && d <= weekEnd;
     });
 
-    const ensureCdEntry = (cdName) => {
-      const key = normalizePodFilterKey(cdName || "Unassigned");
-      if (!cdMap.has(key)) {
-        cdMap.set(key, {
-          cdName: cdName || "Unassigned",
-          productionAssets: new Set(),
-          liveAssets: new Set(),
-          acdMap: new Map(),
-        });
-      }
-      return cdMap.get(key);
-    };
-
-    const ensureAcdEntry = (cdEntry, acdName) => {
-      const acdKey = normalizePodFilterKey(acdName || "Unassigned");
-      if (!cdEntry.acdMap.has(acdKey)) {
-        cdEntry.acdMap.set(acdKey, {
-          acdName: acdName || "Unassigned",
-          productionAssets: new Set(),
-          liveAssets: new Set(),
-        });
-      }
-      return cdEntry.acdMap.get(acdKey);
-    };
-
-    for (const row of throughputRows) {
-      const cdName = sanitizeAllowedOwnerName(row?.cdName || row?.cd);
-      const acdNamesRaw = Array.isArray(row?.acdNames) && row.acdNames.length > 0 ? row.acdNames : [];
-      const acdNames = acdNamesRaw.map(sanitizeAllowedOwnerName).filter(Boolean);
-      const assetCode = String(row?.assetCode || row?.scriptCode || `${row?.showName}-${row?.beatName}`).trim();
-      if (!assetCode || !cdName || acdNames.length === 0) continue;
-
-      const cdEntry = ensureCdEntry(cdName);
-      if (row.source === "production") cdEntry.productionAssets.add(assetCode);
-      if (row.source === "live") cdEntry.liveAssets.add(assetCode);
-
-      for (const acdName of acdNames) {
-        const acdEntry = ensureAcdEntry(cdEntry, acdName);
-        if (row.source === "production") acdEntry.productionAssets.add(assetCode);
-        if (row.source === "live") acdEntry.liveAssets.add(assetCode);
-      }
+    const aggMap = new Map();
+    for (const row of filtered) {
+      const name = section3ViewType === "cd" ? String(row.cdName || "") : String(row.acdName || "");
+      if (!name) continue;
+      if (!aggMap.has(name)) aggMap.set(name, { name, totalMinutes: 0, totalImages: 0 });
+      const entry = aggMap.get(name);
+      entry.totalMinutes = Number((entry.totalMinutes + Number(row.totalMinutes || 0)).toFixed(1));
+      entry.totalImages += Number(row.totalImages || 0);
     }
 
-    return Array.from(cdMap.values())
-      .map((cdEntry) => {
-        const acdRows = Array.from(cdEntry.acdMap.values())
-          .map((acdEntry) => {
-            const productionCount = acdEntry.productionAssets.size;
-            const liveCount = acdEntry.liveAssets.size;
-            const productionMinutes = Number((productionCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
-            const liveMinutes = Number((liveCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
-            const totalMinutes = Number((productionMinutes + liveMinutes).toFixed(1));
-            return {
-              acdName: acdEntry.acdName,
-              productionMinutes,
-              liveMinutes,
-              totalMinutes,
-              minutesPerDay: Number((totalMinutes / Math.max(1, weekdayCount)).toFixed(1)),
-            };
-          })
-          .sort((a, b) => b.totalMinutes - a.totalMinutes || a.acdName.localeCompare(b.acdName));
-
-        const productionCount = cdEntry.productionAssets.size;
-        const liveCount = cdEntry.liveAssets.size;
-        const productionMinutes = Number((productionCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
-        const liveMinutes = Number((liveCount * SECTION3_MINUTES_PER_ASSET).toFixed(1));
-        const totalMinutes = Number((productionMinutes + liveMinutes).toFixed(1));
-        return {
-          cdName: cdEntry.cdName,
-          productionMinutes,
-          liveMinutes,
-          totalMinutes,
-          minutesPerDay: Number((totalMinutes / Math.max(1, weekdayCount)).toFixed(1)),
-          acdRows,
-        };
-      })
-      .sort((a, b) => b.totalMinutes - a.totalMinutes || a.cdName.localeCompare(b.cdName));
-  }, [scopedWorkflowRows, section3AssetTypes, weekdayCount]);
-  const allCdsExpanded =
-    throughputByCd.length > 0 &&
-    throughputByCd.every((row) => Boolean(expandedCds[row.cdName]));
+    return Array.from(aggMap.values())
+      .sort((a, b) => b.totalMinutes - a.totalMinutes || a.name.localeCompare(b.name));
+  }, [acdMetricsData, overviewData?.weekStart, overviewData?.weekEnd, section3ViewType]);
 
   const fullGenAiByBeat = useMemo(() =>
     Array.from(
@@ -536,43 +411,24 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
             <div className="overview-section-title">Production throughput</div>
           </div>
           <div className="overview-section-actions" style={{ marginLeft: "auto", justifyContent: "flex-end" }}>
-            <label className="toolbar-select" style={{ minWidth: 180 }}>
-              <span>Assets</span>
-              <select
-                multiple
-                value={section3AssetTypes}
-                onChange={(event) => {
-                  const values = Array.from(event.target.selectedOptions).map((option) => option.value);
-                  setSection3AssetTypes(values.length > 0 ? values : SECTION3_ASSET_TYPE_OPTIONS);
-                }}
-              >
-                {SECTION3_ASSET_TYPE_OPTIONS.map((type) => (
-                  <option key={type} value={type}>
-                    {SECTION3_ASSET_TYPE_LABELS[type] || type}
-                  </option>
-                ))}
-              </select>
-              <span style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "normal", textTransform: "none", fontWeight: 500 }}>
-                Hold Shift (or Cmd/Ctrl) to multi-select
-              </span>
-            </label>
-            <button
-              type="button"
-              className="ghost-button overview-section-link"
-              onClick={() =>
-                setExpandedCds(
-                  allCdsExpanded
-                    ? {}
-                    : Object.fromEntries(throughputByCd.map((row) => [row.cdName, true]))
-                )
-              }
-            >
-              {allCdsExpanded ? "Collapse all pods" : "Open POD Wise"}
-            </button>
+            <ToggleGroup
+              label="View"
+              options={[{ id: "acd", label: "ACD" }, { id: "cd", label: "CD" }]}
+              value={section3ViewType}
+              onChange={setSection3ViewType}
+            />
           </div>
         </div>
         <div className="panel-card overview-panel-card">
-          <AcdCollapsibleTable acdMetricsData={acdMetricsData} acdMetricsLoading={acdMetricsLoading} />
+          {acdMetricsLoading ? (
+            <div style={{ fontSize: 12, color: "var(--subtle)", padding: "12px 0" }}>Loading production data…</div>
+          ) : (
+            <AcdLeaderboardChart
+              rows={overviewThroughputRows}
+              viewLabel={section3ViewType === "cd" ? "CD" : "ACD"}
+              emptyText="No production data for this date range."
+            />
+          )}
         </div>
       </section>
 
