@@ -3,6 +3,7 @@ import {
   fetchAnalyticsLiveTabRows,
   fetchEditorialWorkflowRows,
   fetchIdeationTabRows,
+  fetchLiveTabRows,
   fetchLiveWorkflowRows,
   parseLiveDate,
   fetchProductionWorkflowRows,
@@ -516,6 +517,11 @@ export async function GET(request) {
   const weekSelection = startDate || endDate ? buildDateRangeSelection({ startDate, endDate, period }) : getWeekSelection(period);
 
   try {
+    // Warm the Live tab cache before parallel fetches — both fetchLiveWorkflowRows and
+    // fetchAnalyticsLiveTabRows read LIVE_TAB_NAME. Without this, concurrent cold-cache
+    // fetches race each other and one can timeout.
+    await fetchLiveTabRows().catch(() => {});
+
     const [ideationResult, editorialResult, readyResult, productionResult, liveResult, analyticsResult] = await Promise.all([
       fetchIdeationTabRows()
         .then((value) => ({ rows: value?.rows || [], error: "" }))
