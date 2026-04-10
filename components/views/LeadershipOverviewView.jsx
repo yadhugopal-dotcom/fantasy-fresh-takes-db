@@ -457,12 +457,17 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                 outputData.podRows.flatMap((podRow) => {
                   const isExpanded = Boolean(expandedPods[podRow.podLeadName]);
                   const writerRows = outputData.writerRowsByPod[podRow.podLeadName] || [];
+                  const podLabel = podRow.podLeadName || "-";
+                  const toggleLabel = isExpanded
+                    ? `Hide writer names for ${podLabel}`
+                    : `Show writer names for ${podLabel}`;
                   const podTr = (
                     <tr key={`pod-${podRow.podLeadName}`} style={{ fontWeight: 700 }}>
                       <td>
                         <button
                           type="button"
                           className="as-link"
+                          aria-expanded={isExpanded}
                           onClick={() =>
                             setExpandedPods((current) => ({
                               ...current,
@@ -476,7 +481,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
                             fontWeight: 700,
                           }}
                         >
-                          {isExpanded ? "▾" : "▸"} {podRow.podLeadName || "-"}
+                          {toggleLabel}
                         </button>
                       </td>
                       {section2Columns.map((column) => (
