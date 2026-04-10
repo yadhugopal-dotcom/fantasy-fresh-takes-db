@@ -92,7 +92,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const [expandedCds, setExpandedCds] = useState({});
   const [section2Mode, setSection2Mode] = useState("custom");
   const [section3AssetTypes, setSection3AssetTypes] = useState(SECTION3_ASSET_TYPE_OPTIONS);
-  const [section4AssetTypes, setSection4AssetTypes] = useState(SECTION3_ASSET_TYPE_OPTIONS);
+  const [expandedAngles, setExpandedAngles] = useState({});
   const beatRows = Array.isArray(overviewData?.beatRows) ? overviewData.beatRows : [];
   const allBeatRows = Array.isArray(overviewData?.allBeatRows) ? overviewData.allBeatRows : beatRows;
   const workflowRows = Array.isArray(overviewData?.workflowRows) ? overviewData.workflowRows : [];
@@ -100,13 +100,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
   const fullGenAiRows = Array.isArray(overviewData?.fullGenAiRows) ? overviewData.fullGenAiRows : [];
   const scopedBeatRows = beatRows;
   const scopedWorkflowRows = workflowRows;
-  const scopedFullGenAiRows = useMemo(() => {
-    const selectedTypes = new Set(section4AssetTypes);
-    return fullGenAiRows.filter((row) => {
-      const assetType = detectAssetTypeFromCode(row?.assetCode || "");
-      return selectedTypes.has(assetType);
-    });
-  }, [fullGenAiRows, section4AssetTypes]);
+  const scopedFullGenAiRows = fullGenAiRows;
   const selectedRangeLabel = overviewData?.selectedWeekRangeLabel || "";
   const lastWeekSelection = getWeekSelection("last");
   const currentWeekSelection = getWeekSelection("current");
@@ -343,11 +337,20 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
           beatName: row.beatName,
           attempts: 0,
           successCount: 0,
+          ads: [],
         });
       }
       const entry = map.get(key);
       entry.attempts += 1;
       if (row.success) entry.successCount += 1;
+      entry.ads.push({
+        assetCode: row.assetCode,
+        success: row.success,
+        cpiUsd: row.cpiUsd,
+        absoluteCompletionPct: row.absoluteCompletionPct,
+        ctrPct: row.ctrPct,
+        clickToInstall: row.clickToInstall,
+      });
       return map;
       }, new Map()).values()
     )
@@ -357,7 +360,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
       }))
       .sort((a, b) => b.attempts - a.attempts || a.showName.localeCompare(b.showName) || a.beatName.localeCompare(b.beatName))
   , [scopedFullGenAiRows]);
-  const successfulAnglesCount = fullGenAiByBeat.filter((row) => Number(row.successCount || 0) > 0).length;
+  const successfulAdsCount = scopedFullGenAiRows.filter((r) => r.success).length;
 
   const beatsMetricCards = [
     { label: "Approved Beats", value: overviewLoading ? "..." : formatMetricValue(approvedBeats) },
@@ -580,39 +583,22 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
         <div className="overview-section-head">
           <div>
             <div className="overview-section-title">Full Gen AI</div>
+            <div className="overview-section-subtitle" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+              Q1 Manual + Q1 Auto AI only
+            </div>
           </div>
           <div className="overview-section-actions" style={{ marginLeft: "auto", justifyContent: "flex-end" }}>
-            <label className="toolbar-select" style={{ minWidth: 180 }}>
-              <span>Assets</span>
-              <select
-                multiple
-                value={section4AssetTypes}
-                onChange={(event) => {
-                  const values = Array.from(event.target.selectedOptions).map((option) => option.value);
-                  setSection4AssetTypes(values.length > 0 ? values : SECTION3_ASSET_TYPE_OPTIONS);
-                }}
-              >
-                {SECTION3_ASSET_TYPE_OPTIONS.map((type) => (
-                  <option key={type} value={type}>
-                    {SECTION3_ASSET_TYPE_LABELS[type] || type}
-                  </option>
-                ))}
-              </select>
-              <span style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "normal", textTransform: "none", fontWeight: 500 }}>
-                Hold Shift (or Cmd/Ctrl) to multi-select
-              </span>
-            </label>
             <div className="overview-section-note">
               {overviewLoading ? "Rows: ..." : `Rows: ${formatMetricValue(fullGenAiByBeat.length)}`}
             </div>
           </div>
         </div>
         <div className="metric-grid three-col">
-          <MetricCard label="Assets passed to Full Gen AI" value={overviewLoading ? "..." : formatMetricValue(scopedFullGenAiRows.length)} />
+          <MetricCard label="Ads passed to Full Gen AI" value={overviewLoading ? "..." : formatMetricValue(scopedFullGenAiRows.length)} />
           <MetricCard
-            label="Successful angles (formula)"
-            value={overviewLoading ? "..." : formatMetricValue(successfulAnglesCount)}
-            hint="Angle counts only when formula thresholds are met"
+            label="Successful ads (formula)"
+            value={overviewLoading ? "..." : formatMetricValue(successfulAdsCount)}
+            hint="Ad counts only when all formula thresholds are met"
           />
           <MetricCard
             label="Overall hit rate"
@@ -620,7 +606,7 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
               overviewLoading
                 ? "..."
                 : scopedFullGenAiRows.length > 0
-                  ? formatPercent((scopedFullGenAiRows.filter((row) => row.success).length / scopedFullGenAiRows.length) * 100)
+                  ? formatPercent((successfulAdsCount / scopedFullGenAiRows.length) * 100)
                   : "-"
             }
           />
@@ -636,30 +622,60 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
               <tr>
                 <th>Show</th>
                 <th>Beat</th>
-                <th>Attempts</th>
-                <th>Success</th>
+                <th>Ads</th>
+                <th>Successful</th>
                 <th>Hit rate</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {fullGenAiByBeat.length > 0 ? (
-                fullGenAiByBeat.map((row) => (
-                  <tr
-                    key={`${row.showName}-${row.beatName}`}
-                    className={row.successCount > 0 ? "overview-genai-success-row" : ""}
-                  >
-                    <td>{row.showName || "-"}</td>
-                    <td>{row.beatName || "-"}</td>
-                    <td>{formatMetricValue(row.attempts)}</td>
-                    <td className={row.successCount > 0 ? "overview-genai-success-value" : ""}>
-                      {formatMetricValue(row.successCount)}
-                    </td>
-                    <td>{row.hitRate != null ? formatPercent(row.hitRate) : "-"}</td>
-                  </tr>
-                ))
+                fullGenAiByBeat.flatMap((row) => {
+                  const angleKey = `${row.showName}|${row.beatName}`;
+                  const isExpanded = Boolean(expandedAngles[angleKey]);
+                  return [
+                    <tr
+                      key={angleKey}
+                      className={row.successCount > 0 ? "overview-genai-success-row" : ""}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setExpandedAngles((prev) => ({ ...prev, [angleKey]: !prev[angleKey] }))}
+                    >
+                      <td>{row.showName || "-"}</td>
+                      <td>{row.beatName || "-"}</td>
+                      <td>{formatMetricValue(row.attempts)}</td>
+                      <td className={row.successCount > 0 ? "overview-genai-success-value" : ""}>
+                        {formatMetricValue(row.successCount)}
+                      </td>
+                      <td>{row.hitRate != null ? formatPercent(row.hitRate) : "-"}</td>
+                      <td style={{ textAlign: "center", color: "var(--muted)", fontSize: 11 }}>{isExpanded ? "▲" : "▼"}</td>
+                    </tr>,
+                    ...(isExpanded ? [
+                      <tr key={`${angleKey}-hdr`} style={{ background: "var(--bg-subtle, #f5f0e8)" }}>
+                        <td colSpan={2} style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", paddingLeft: 28 }}>Asset Code</td>
+                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CPI</td>
+                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>True Completion</td>
+                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTR</td>
+                        <td style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>CTI</td>
+                      </tr>,
+                      ...row.ads.map((ad) => (
+                        <tr
+                          key={`${angleKey}-${ad.assetCode}`}
+                          style={{ background: "var(--bg-subtle, #f5f0e8)" }}
+                          className={ad.success ? "overview-genai-success-row" : ""}
+                        >
+                          <td colSpan={2} style={{ paddingLeft: 28, fontSize: 12 }}>{ad.assetCode || "-"}</td>
+                          <td style={{ fontSize: 12 }}>{ad.cpiUsd != null ? `$${ad.cpiUsd.toFixed(2)}` : "-"}</td>
+                          <td style={{ fontSize: 12 }}>{ad.absoluteCompletionPct != null ? formatPercent(ad.absoluteCompletionPct) : "-"}</td>
+                          <td style={{ fontSize: 12 }}>{ad.ctrPct != null ? formatPercent(ad.ctrPct) : "-"}</td>
+                          <td style={{ fontSize: 12 }}>{ad.clickToInstall != null ? formatPercent(ad.clickToInstall) : "-"}</td>
+                        </tr>
+                      )),
+                    ] : []),
+                  ];
+                })
               ) : (
                 <tr>
-                  <td colSpan="5">No Full Gen AI rows for this filter yet.</td>
+                  <td colSpan="6">No Full Gen AI rows for this filter yet.</td>
                 </tr>
               )}
             </tbody>
@@ -668,16 +684,13 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
         <div className="overview-guidelines-card">
           <div className="overview-guidelines-title">Success definition and guidelines</div>
           <div className="overview-guidelines-line">
-            A successful angle is one where all formula thresholds pass for that attempt.
+            Shows Q1 Manual + Q1 Auto AI ads that have been passed to Full Gen AI (spend ≥ $100, CPI &lt; $10, ≤ 2 metric misses).
           </div>
           <div className="overview-guidelines-line">
-            Formula: Amount Spent &gt;= 100, Q1 Completion &gt; 10%, CTI &gt;= 12%, Absolute Completion &gt;= 1.8%, CPI &lt;= 12.
+            A successful ad passes all formula thresholds: Amount Spent ≥ 100, Q1 Completion &gt; 10%, CTI ≥ 12%, True Completion ≥ 1.8%, CPI ≤ 12.
           </div>
-          <div className="overview-guidelines-line">Hit rate = (successful attempts / attempts) x 100.</div>
-          <div className="overview-guidelines-line">Rows shaded light green have one or more successful outcomes.</div>
-          <div className="overview-guidelines-line">
-            Beats with zero success in the selected range stay unshaded and should be reviewed for iteration.
-          </div>
+          <div className="overview-guidelines-line">Hit rate = (successful ads / total ads) × 100. Click any row to see per-ad metrics.</div>
+          <div className="overview-guidelines-line">Rows shaded light green have one or more successful ads.</div>
         </div>
       </section>
 

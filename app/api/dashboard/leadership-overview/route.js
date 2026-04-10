@@ -450,7 +450,7 @@ function buildFullGenAiRows(rows) {
   }
 
   return Array.from(deduped.values())
-    .filter((row) => classifyNextStep(row) === "Gen AI")
+    .filter((row) => isAnalyticsEligibleProductionType(row?.productionType) && classifyNextStep(row) === "Gen AI")
     .map((row, index) => {
       const timeParts = getTimeParts(normalizeText(row?.liveDate));
       return {
@@ -458,7 +458,12 @@ function buildFullGenAiRows(rows) {
         assetCode: normalizeText(row?.assetCode),
         showName: normalizeText(row?.showName),
         beatName: normalizeText(row?.beatName),
+        productionType: normalizeText(row?.productionType),
         success: isFunnelSuccess(row),
+        cpiUsd: toFiniteNumber(row?.cpiUsd),
+        absoluteCompletionPct: toFiniteNumber(row?.absoluteCompletionPct),
+        ctrPct: toFiniteNumber(row?.ctrPct),
+        clickToInstall: toFiniteNumber(row?.clickToInstall),
         ...timeParts,
       };
     })
