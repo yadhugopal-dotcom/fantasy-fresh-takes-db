@@ -373,11 +373,10 @@ export default function LeadershipOverviewContent({ leadershipOverviewData, lead
     <div className="section-stack overview-flow-shell">
       {overviewError ? <div className="warning-note">{overviewError}</div> : null}
 
-      {(selectedRangeLabel || overviewData?.confidenceNote) ? (
+      {overviewData?.confidenceNote ? (
         <>
           <div className="overview-hero-actions" style={{ marginTop: 2 }}>
-            {selectedRangeLabel ? <div className="overview-range-pill">{selectedRangeLabel}</div> : null}
-            {overviewData?.confidenceNote ? <div className="overview-confidence-note">{overviewData.confidenceNote}</div> : null}
+            <div className="overview-confidence-note">{overviewData.confidenceNote}</div>
           </div>
           <hr className="section-divider" />
         </>

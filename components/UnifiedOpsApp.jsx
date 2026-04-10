@@ -1265,44 +1265,27 @@ export default function UnifiedOpsApp() {
             <div className="app-topbar-right">
               {headerSupportsDateRange ? (
                 <div className="app-topbar-range" data-share-ignore="true">
-                  <button
-                    type="button"
-                    className={`app-topbar-quick-btn${isLastWeekSelected ? " is-active" : ""}`}
-                    disabled={headerDateRangeDisabled}
-                    onClick={() => {
-                      if (isLastWeekSelected) {
-                        setDateFilterMode("custom");
-                        setDashboardDateRange(
-                          buildDateRangeSelection({
-                            startDate: lastNonQuickRange.startDate,
-                            endDate: lastNonQuickRange.endDate,
-                            minDate: MIN_DASHBOARD_DATE,
-                          })
-                        );
-                        return;
-                      }
-                      setLastNonQuickRange({
-                        startDate: normalizedHeaderRange.startDate,
-                        endDate: normalizedHeaderRange.endDate,
-                      });
-                      setDateFilterMode("last-week");
-                      setDashboardDateRange(lastWeekQuickRange);
-                    }}
-                  >
-                    Last week
-                  </button>
                   {activeView === "planner2" ? (
                     <>
+                      <button
+                        type="button"
+                        className={`app-topbar-quick-btn${isLastWeekSelected ? " is-active" : ""}`}
+                        disabled={headerDateRangeDisabled}
+                        onClick={() => {
+                          setLastNonQuickRange({ startDate: normalizedHeaderRange.startDate, endDate: normalizedHeaderRange.endDate });
+                          setDateFilterMode("last-week");
+                          setDashboardDateRange(lastWeekQuickRange);
+                        }}
+                      >
+                        Last week
+                      </button>
                       <button
                         type="button"
                         className={`app-topbar-quick-btn${isCurrentWeekSelected ? " is-active" : ""}`}
                         disabled={headerDateRangeDisabled}
                         onClick={() => {
                           if (!isCurrentWeekSelected) {
-                            setLastNonQuickRange({
-                              startDate: normalizedHeaderRange.startDate,
-                              endDate: normalizedHeaderRange.endDate,
-                            });
+                            setLastNonQuickRange({ startDate: normalizedHeaderRange.startDate, endDate: normalizedHeaderRange.endDate });
                           }
                           setDateFilterMode("current-week");
                           setDashboardDateRange(currentWeekQuickRange);
@@ -1316,10 +1299,7 @@ export default function UnifiedOpsApp() {
                         disabled={headerDateRangeDisabled}
                         onClick={() => {
                           if (!isNextWeekSelected) {
-                            setLastNonQuickRange({
-                              startDate: normalizedHeaderRange.startDate,
-                              endDate: normalizedHeaderRange.endDate,
-                            });
+                            setLastNonQuickRange({ startDate: normalizedHeaderRange.startDate, endDate: normalizedHeaderRange.endDate });
                           }
                           setDateFilterMode("next-week");
                           setDashboardDateRange(nextWeekQuickRange);
@@ -1327,25 +1307,38 @@ export default function UnifiedOpsApp() {
                       >
                         Next week
                       </button>
+                      <button
+                        type="button"
+                        className={`app-topbar-quick-btn${isCustomRangeSelected ? " is-active" : ""}`}
+                        disabled={headerDateRangeDisabled}
+                        onClick={() => {
+                          setDateFilterMode("custom");
+                          setDashboardDateRange(buildDateRangeSelection({ startDate: lastNonQuickRange.startDate, endDate: lastNonQuickRange.endDate, minDate: MIN_DASHBOARD_DATE }));
+                        }}
+                      >
+                        Custom range
+                      </button>
                     </>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={`app-topbar-quick-btn${isCustomRangeSelected ? " is-active" : ""}`}
-                    disabled={headerDateRangeDisabled}
-                    onClick={() => {
-                      setDateFilterMode("custom");
-                      setDashboardDateRange(
-                        buildDateRangeSelection({
-                          startDate: lastNonQuickRange.startDate,
-                          endDate: lastNonQuickRange.endDate,
-                          minDate: MIN_DASHBOARD_DATE,
-                        })
-                      );
-                    }}
-                  >
-                    Custom range
-                  </button>
+                  ) : (
+                    <select
+                      className="app-topbar-quick-btn"
+                      disabled={headerDateRangeDisabled}
+                      value={isLastWeekSelected ? "last-week" : "custom"}
+                      onChange={(event) => {
+                        if (event.target.value === "last-week") {
+                          setLastNonQuickRange({ startDate: normalizedHeaderRange.startDate, endDate: normalizedHeaderRange.endDate });
+                          setDateFilterMode("last-week");
+                          setDashboardDateRange(lastWeekQuickRange);
+                        } else {
+                          setDateFilterMode("custom");
+                          setDashboardDateRange(buildDateRangeSelection({ startDate: lastNonQuickRange.startDate, endDate: lastNonQuickRange.endDate, minDate: MIN_DASHBOARD_DATE }));
+                        }
+                      }}
+                    >
+                      <option value="last-week">Last week</option>
+                      <option value="custom">Custom range</option>
+                    </select>
+                  )}
                   <label className="app-topbar-date-field">
                     <span className="app-topbar-date-label">Start date</span>
                     <input
