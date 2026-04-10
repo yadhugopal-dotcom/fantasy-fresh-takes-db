@@ -926,7 +926,7 @@ export default function UnifiedOpsApp() {
   }, [activeView, dashboardDateRange]);
 
   useEffect(() => {
-    if (activeView !== "analytics") {
+    if (activeView !== "analytics" && activeView !== "details") {
       return undefined;
     }
 
