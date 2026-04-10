@@ -576,6 +576,8 @@ export async function GET(request) {
       period: startDate || endDate ? "range" : period,
       selectedWeekKey: weekSelection.weekKey,
       selectedWeekRangeLabel: formatWeekRangeLabel(weekSelection.weekStart, weekSelection.weekEnd),
+      weekStart: weekSelection.weekStart,
+      weekEnd: weekSelection.weekEnd,
       confidenceNote: "",
       filters: buildFilterOptions(scopedBeatRows),
       beatRows: scopedBeatRows,
