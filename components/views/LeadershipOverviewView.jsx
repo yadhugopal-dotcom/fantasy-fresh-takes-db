@@ -18,11 +18,10 @@ const FOCUS_POD_LEADS = [
   { key: "gilatar", label: "Gilatar" },
   { key: "woodward", label: "Woodward" },
 ];
-const SECTION3_ASSET_TYPE_OPTIONS = ["GA", "GI", "GU"];
+const SECTION3_ASSET_TYPE_OPTIONS = ["GA", "GI"];
 const SECTION3_ASSET_TYPE_LABELS = {
-  GA: "Q1 + TN",
+  GA: "Q1 manual + thumbnail",
   GI: "Auto AI",
-  GU: "Full GenAI",
 };
 const SECTION3_MINUTES_PER_ASSET = 2.5;
 const SECTION3_ALLOWED_NAMES = new Set([
