@@ -345,20 +345,19 @@ export default function Planner2Content({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
+                gap: 6,
+                padding: "7px 12px",
                 background: "#fff",
                 border: "1px solid #e0d5c7",
-                borderRadius: 16,
-                borderLeft: `5px solid ${metric.color}`,
-                minWidth: 190,
+                borderRadius: 10,
+                borderLeft: `3px solid ${metric.color}`,
               }}
             >
-              <span style={{ fontSize: 28, lineHeight: 1, fontWeight: 700, color: metric.color }}>
+              <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 700, color: metric.color }}>
                 {formatNumber(metric.value)}
               </span>
-              <span style={{ fontSize: 20, lineHeight: 1, color: "#b8b2a8" }}>·</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-secondary)" }}>{metric.label}</span>
+              <span style={{ fontSize: 14, lineHeight: 1, color: "#b8b2a8" }}>·</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-secondary)" }}>{metric.label}</span>
             </div>
           ))}
         </div>
@@ -417,7 +416,7 @@ export default function Planner2Content({
                             background: POD_COLOR_MAP[group.pod] || POD_COLOR_MAP.Unmapped,
                             color: "#fff",
                             fontWeight: 700,
-                            fontSize: 15,
+                            fontSize: 13,
                             textAlign: "center",
                             verticalAlign: "top",
                             paddingTop: 18,
@@ -428,8 +427,8 @@ export default function Planner2Content({
                       ) : null}
                       {isFirstWriterRow ? (
                         <td style={{ background: "#faf7f3", verticalAlign: "top" }} className="planner2-col-writer" rowSpan={writerRowCount}>
-                          <div style={{ fontWeight: 700, fontSize: 18 }}>{row.ownerName || "-"}</div>
-                          <div style={{ color: "var(--subtle)", fontSize: 12 }}>{row.writerRole}</div>
+                          <div style={{ fontWeight: 600, fontSize: 11 }}>{row.ownerName || "-"}</div>
+                          <div style={{ color: "var(--subtle)", fontSize: 10 }}>{row.writerRole}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                             {ideationDays > 0 ? (
                               <span
@@ -469,9 +468,9 @@ export default function Planner2Content({
                         </td>
                       ) : null}
                       <td style={{ background: "#faf7f3", verticalAlign: "top" }} className="planner2-col-beat">
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>{row.beatDisplay.title || "-"}</div>
+                        <div style={{ fontWeight: 700, fontSize: 11 }}>{row.beatDisplay.title || "-"}</div>
                         {row.beatDisplay.subtitle ? (
-                          <div style={{ color: "var(--subtle)", fontSize: 12 }}>{row.beatDisplay.subtitle}</div>
+                          <div style={{ color: "var(--subtle)", fontSize: 10 }}>{row.beatDisplay.subtitle}</div>
                         ) : null}
                       </td>
                       {DAYS.map((_, dayIndex) => {
