@@ -8,6 +8,7 @@ import {
 import { formatWeekRangeLabel, getWeekSelection, getWeekWindowFromReference, parseYmdToUtcDate, shiftYmd } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 function normalizeKey(value) {

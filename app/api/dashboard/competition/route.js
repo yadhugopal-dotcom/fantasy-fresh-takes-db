@@ -28,6 +28,7 @@ const CONFIG_PATH = "config/writer-config.json";
 const LIFETIME_SINCE = "2026-03-16";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 function makePlannerWeekPath(weekKey) {

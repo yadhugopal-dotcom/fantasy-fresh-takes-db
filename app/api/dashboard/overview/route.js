@@ -35,6 +35,7 @@ import { buildDateRangeSelection, formatWeekRangeLabel, getWeekSelection, getWee
 
 const CONFIG_PATH = "config/writer-config.json";
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 function makePlannerWeekPath(weekKey) {

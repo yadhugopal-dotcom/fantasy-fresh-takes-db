@@ -12,6 +12,7 @@ import {
 } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const ACTIONED_STATE_PATH = "analytics/actioned-state.json";

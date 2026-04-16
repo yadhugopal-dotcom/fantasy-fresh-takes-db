@@ -20,6 +20,7 @@ import { getWeekSelection, formatWeekRangeLabel } from "../../../../lib/week-vie
 import { matchWriterName, matchAngleName } from "../../../../lib/fuzzy-match.js";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const CONFIG_PATH = "config/writer-config.json";

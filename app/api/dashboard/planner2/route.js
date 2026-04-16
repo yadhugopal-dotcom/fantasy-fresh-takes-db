@@ -4,6 +4,7 @@ import { buildDateRangeSelection, formatWeekRangeLabel, getWeekSelection, todayI
 import { parseLiveDate } from "../../../../lib/live-tab.js";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const require = createRequire(import.meta.url);

@@ -13,6 +13,7 @@ import { matchAngleName } from "../../../../lib/fuzzy-match.js";
 import { buildDateRangeSelection, formatWeekRangeLabel, getWeekSelection, normalizeWeekView } from "../../../../lib/week-view.js";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const BASELINE_THRESHOLD_CHECKS = {
