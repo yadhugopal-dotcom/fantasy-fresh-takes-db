@@ -813,19 +813,18 @@ export default function UnifiedOpsApp() {
           ) {
             hasCachedPayload = true;
             if (!cancelled) {
-              setBeatsPerformanceData(parsedCache.payload);
+              setBeatsPerformanceData({ ...parsedCache.payload, warnings: [] });
               setBeatsPerformanceError("");
-              setBeatsPerformanceLoading(false);
-              setDashboardLoadingMessage("");
+              setBeatsPerformanceLoading(true);
             }
           }
         }
       } catch {}
 
       if (!hasCachedPayload) {
-        setBeatsPerformanceLoading(true);
         setBeatsPerformanceError("");
       }
+      setBeatsPerformanceLoading(true);
 
       try {
         const response = await fetch("/api/dashboard/beats-performance");

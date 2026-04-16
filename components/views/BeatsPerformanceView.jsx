@@ -526,7 +526,7 @@ export default function BeatsPerformanceContent({
       </div>
       <ShareablePanel shareLabel="Beats Performance" onShare={onShare} isSharing={copyingSection === "Beats Performance"}>
       <div className="section-stack">
-        {beatsPerformanceLoading ? <div className="warning-note">Loading data. Showing placeholder values.</div> : null}
+        {beatsPerformanceLoading ? <div className="warning-note">Refreshing data from Sheets…</div> : null}
         {beatsPerformanceError ? <div className="warning-note">{beatsPerformanceError}</div> : null}
         {!beatsPerformanceLoading && !beatsPerformanceError && Array.isArray(safeBeatsPerformanceData?.warnings) && safeBeatsPerformanceData.warnings.length > 0
           ? safeBeatsPerformanceData.warnings.map((w) => <div key={w} className="warning-note">{w}</div>)
