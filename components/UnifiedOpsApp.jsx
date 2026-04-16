@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import GanttTracker from "./GanttTracker.jsx";
 import { copyNodeImageToClipboard } from "../lib/clipboard-share.js";
 import {
@@ -435,6 +435,8 @@ export default function UnifiedOpsApp() {
     getMonthWeekSelectionByDate(DEFAULT_DASHBOARD_RANGE.startDate).id
   );
   const [dateFilterMode, setDateFilterMode] = useState("custom");
+  const [weekDropdownOpen, setWeekDropdownOpen] = useState(false);
+  const weekDropdownRef = useRef(null);
   const normalizedHeaderRange = useMemo(
     () => buildDateRangeSelection({ ...dashboardDateRange, minDate: MIN_DASHBOARD_DATE }),
     [dashboardDateRange]
@@ -485,6 +487,18 @@ export default function UnifiedOpsApp() {
       setWeekFilterSelection(matchedOption.id);
     }
   }, [monthWeekOptions, weekFilterSelection, normalizedHeaderRange.startDate]);
+
+  useEffect(() => {
+    if (!weekDropdownOpen) return undefined;
+    function handleClickOutside(event) {
+      if (weekDropdownRef.current && !weekDropdownRef.current.contains(event.target)) {
+        setWeekDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [weekDropdownOpen]);
+
   const lastWeekQuickRange = useMemo(
     () =>
       buildDateRangeSelection({
@@ -1335,35 +1349,81 @@ export default function UnifiedOpsApp() {
             <div className="app-topbar-right">
               {headerSupportsDateRange ? (
                 <div className="app-topbar-range" data-share-ignore="true">
-                  <label className={`app-topbar-date-field${headerDateRangeUsesWeekPreset ? " is-active" : ""}`}>
+                  <div
+                    ref={weekDropdownRef}
+                    className={`week-picker-wrap${headerDateRangeUsesWeekPreset ? " is-active" : ""}${weekDropdownOpen ? " is-open" : ""}`}
+                  >
                     <span className="app-topbar-date-label">Filter by week</span>
-                    <select
-                      className={`app-topbar-quick-btn${headerDateRangeUsesWeekPreset ? " is-active" : ""}`}
+                    <button
+                      type="button"
+                      className="week-picker-trigger"
                       disabled={headerDateRangeDisabled}
-                      value={weekFilterSelection}
-                      onChange={(event) => {
-                        const nextOption = monthWeekOptions.find((option) => option.id === event.target.value);
-                        if (!nextOption) {
-                          return;
-                        }
-
-                        setWeekFilterSelection(nextOption.id);
-                        setDashboardDateRange(
-                          buildDateRangeSelection({
-                            startDate: nextOption.weekStart,
-                            endDate: nextOption.weekEnd,
-                            minDate: MIN_DASHBOARD_DATE,
-                          })
-                        );
-                      }}
+                      onClick={() => setWeekDropdownOpen((v) => !v)}
+                      aria-haspopup="listbox"
+                      aria-expanded={weekDropdownOpen}
                     >
-                      {monthWeekOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      <svg className="week-picker-cal-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.25"/>
+                        <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.25"/>
+                        <path d="M5 1.5v2M11 1.5v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+                        <circle cx="5.5" cy="9.5" r="0.8" fill="currentColor"/>
+                        <circle cx="8" cy="9.5" r="0.8" fill="currentColor"/>
+                        <circle cx="10.5" cy="9.5" r="0.8" fill="currentColor"/>
+                      </svg>
+                      <span className="week-picker-label">
+                        {selectedMonthWeekOption ? selectedMonthWeekOption.label : "Select week"}
+                      </span>
+                      <svg className="week-picker-chevron" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+                        <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    {weekDropdownOpen && (
+                      <div className="week-picker-panel" role="listbox" aria-label="Select week">
+                        {(() => {
+                          const groups = [];
+                          let currentGroup = null;
+                          for (const option of monthWeekOptions) {
+                            if (!currentGroup || currentGroup.monthKey !== option.monthKey) {
+                              currentGroup = { monthKey: option.monthKey, label: option.label.replace(/\s+week\s+\d+$/i, ""), options: [] };
+                              groups.push(currentGroup);
+                            }
+                            currentGroup.options.push(option);
+                          }
+                          return groups.map((group) => (
+                            <div key={group.monthKey} className="week-picker-group">
+                              <div className="week-picker-month-header">{group.label}</div>
+                              {group.options.map((option) => (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={option.id === weekFilterSelection}
+                                  className={`week-picker-option${option.id === weekFilterSelection ? " is-selected" : ""}`}
+                                  onClick={() => {
+                                    setWeekFilterSelection(option.id);
+                                    setDashboardDateRange(
+                                      buildDateRangeSelection({
+                                        startDate: option.weekStart,
+                                        endDate: option.weekEnd,
+                                        minDate: MIN_DASHBOARD_DATE,
+                                      })
+                                    );
+                                    setWeekDropdownOpen(false);
+                                  }}
+                                >
+                                  <svg className="week-picker-check" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+                                    <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  <span>{option.label.replace(/^.*?\s+(week\s+\d+)$/i, (_, w) => w.charAt(0).toUpperCase() + w.slice(1))}</span>
+                                  <span className="week-picker-dates">{option.weekStart} – {option.weekEnd}</span>
+                                </button>
+                              ))}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
                 <label className={`app-topbar-date-field${headerDateRangeUsesManualDates ? " is-active" : ""}`}>
                   <span className="app-topbar-date-label">Start date</span>
                   <input
