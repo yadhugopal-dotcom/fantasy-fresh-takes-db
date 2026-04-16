@@ -383,8 +383,11 @@ function writeClientCache(key, payload) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const MORE_VIEWS = new Set(["details", "planner", "pod-wise"]);
+
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("leadership-overview");
+  const [moreExpanded, setMoreExpanded] = useState(false);
   const [themeMode, setThemeMode] = useState("light");
   const [dashboardDateRange, setDashboardDateRange] = useState({
     startDate: DEFAULT_DASHBOARD_RANGE.startDate,
@@ -1237,6 +1240,8 @@ export default function UnifiedOpsApp() {
     details: "Details",
   };
 
+
+
   return (
     <>
       <div className="app-shell">
@@ -1251,8 +1256,8 @@ export default function UnifiedOpsApp() {
             {[
               ["leadership-overview", "Overview"],
               ["overview", "Editorial Funnel"],
-              ["pod-wise", "POD Wise"],
-              ["planner", "Planner"],
+              ["beats-performance", "Beats Performance"],
+              ["planner2", "Planner"],
               ["analytics", "Analytics"],
               ["production", "Production"],
             ].map(([id, label]) => (
@@ -1268,21 +1273,33 @@ export default function UnifiedOpsApp() {
           </div>
 
           <div className="sidebar-section">
-            <div className="sidebar-section-label">MORE</div>
             <button
               type="button"
-              className={`sidebar-link${activeView === "details" ? " active" : ""}`}
-              onClick={() => setActiveView("details")}
+              className={`sidebar-section-label sidebar-more-toggle${MORE_VIEWS.has(activeView) ? " has-active" : ""}`}
+              onClick={() => setMoreExpanded((prev) => !prev)}
+              aria-expanded={moreExpanded || MORE_VIEWS.has(activeView)}
             >
-              Details
+              <span>MORE</span>
+              <span className="sidebar-more-chevron" style={{ transform: (moreExpanded || MORE_VIEWS.has(activeView)) ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
             </button>
-            <button
-              type="button"
-              className={`sidebar-link${activeView === "planner2" ? " active" : ""}`}
-              onClick={() => setActiveView("planner2")}
-            >
-              Planner
-            </button>
+            {(moreExpanded || MORE_VIEWS.has(activeView)) && (
+              <div className="sidebar-more-items">
+                {[
+                  ["details", "Details"],
+                  ["planner", "Planner"],
+                  ["pod-wise", "POD Wise"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`sidebar-link${activeView === id ? " active" : ""}`}
+                    onClick={() => setActiveView(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </nav>
 

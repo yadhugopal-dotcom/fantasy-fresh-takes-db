@@ -254,6 +254,44 @@ select {
   box-shadow: 0 14px 28px -18px rgba(23, 34, 47, 0.5);
 }
 
+.sidebar-more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 12px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  transition: color 150ms ease;
+}
+
+.sidebar-more-toggle:hover {
+  color: var(--ink-secondary);
+}
+
+.sidebar-more-toggle.has-active {
+  color: var(--accent);
+}
+
+.sidebar-more-chevron {
+  transition: transform 200ms ease;
+  font-size: 12px;
+}
+
+.sidebar-more-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .sidebar-footer {
   padding: 14px 10px;
   border-top: 1px solid var(--border);
