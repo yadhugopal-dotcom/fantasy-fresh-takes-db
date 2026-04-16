@@ -354,6 +354,18 @@ async function readJson(response) {
   return response.json();
 }
 
+function formatDisplayDate(ymd) {
+  if (!ymd) return "—";
+  const [year, month, day] = String(ymd).split("-").map(Number);
+  if (!year || !month || !day) return ymd;
+  return new Date(Date.UTC(year, month - 1, day, 12)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function readClientCache(key, ttlMs = DASHBOARD_CLIENT_CACHE_TTL_MS) {
   if (typeof window === "undefined") return null;
   try {
@@ -437,6 +449,8 @@ export default function UnifiedOpsApp() {
   const [dateFilterMode, setDateFilterMode] = useState("custom");
   const [weekDropdownOpen, setWeekDropdownOpen] = useState(false);
   const weekDropdownRef = useRef(null);
+  const startDateRef = useRef(null);
+  const endDateRef = useRef(null);
   const normalizedHeaderRange = useMemo(
     () => buildDateRangeSelection({ ...dashboardDateRange, minDate: MIN_DASHBOARD_DATE }),
     [dashboardDateRange]
@@ -1424,11 +1438,27 @@ export default function UnifiedOpsApp() {
                       </div>
                     )}
                   </div>
-                <label className={`app-topbar-date-field${headerDateRangeUsesManualDates ? " is-active" : ""}`}>
+                <div className={`date-field-wrap${headerDateRangeUsesManualDates ? " is-active" : ""}`}>
                   <span className="app-topbar-date-label">Start date</span>
+                  <button
+                    type="button"
+                    className="date-field-trigger"
+                    disabled={headerDateRangeDisabled}
+                    onClick={() => {
+                      try { startDateRef.current?.showPicker(); } catch { startDateRef.current?.click(); }
+                    }}
+                  >
+                    <svg className="date-field-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.25"/>
+                      <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.25"/>
+                      <path d="M5 1.5v2M11 1.5v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+                    </svg>
+                    <span className="date-field-display">{formatDisplayDate(normalizedHeaderRange.startDate)}</span>
+                  </button>
                   <input
-                    className="app-topbar-date-input"
+                    ref={startDateRef}
                     type="date"
+                    className="date-field-hidden-input"
                     min={MIN_DASHBOARD_DATE}
                     max={normalizedHeaderRange.endDate}
                     value={normalizedHeaderRange.startDate}
@@ -1443,12 +1473,28 @@ export default function UnifiedOpsApp() {
                       );
                     }}
                   />
-                </label>
-                <label className={`app-topbar-date-field${headerDateRangeUsesManualDates ? " is-active" : ""}`}>
+                </div>
+                <div className={`date-field-wrap${headerDateRangeUsesManualDates ? " is-active" : ""}`}>
                   <span className="app-topbar-date-label">End date</span>
+                  <button
+                    type="button"
+                    className="date-field-trigger"
+                    disabled={headerDateRangeDisabled}
+                    onClick={() => {
+                      try { endDateRef.current?.showPicker(); } catch { endDateRef.current?.click(); }
+                    }}
+                  >
+                    <svg className="date-field-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.25"/>
+                      <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.25"/>
+                      <path d="M5 1.5v2M11 1.5v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+                    </svg>
+                    <span className="date-field-display">{formatDisplayDate(normalizedHeaderRange.endDate)}</span>
+                  </button>
                   <input
-                    className="app-topbar-date-input"
+                    ref={endDateRef}
                     type="date"
+                    className="date-field-hidden-input"
                     min={normalizedHeaderRange.startDate || MIN_DASHBOARD_DATE}
                     value={normalizedHeaderRange.endDate}
                     disabled={headerDateRangeDisabled}
@@ -1462,7 +1508,7 @@ export default function UnifiedOpsApp() {
                       );
                     }}
                   />
-                </label>
+                </div>
                 <div className="app-topbar-range-note">
                   {`Selected date range ${formatWeekRangeLabel(normalizedHeaderRange.startDate, normalizedHeaderRange.endDate)}`}
                 </div>

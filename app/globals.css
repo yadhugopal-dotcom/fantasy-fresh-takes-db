@@ -616,6 +616,75 @@ select {
   white-space: nowrap;
 }
 
+/* ── Custom date field (Start / End date) ────────────────────────────────── */
+.date-field-wrap {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  position: relative;
+}
+
+.date-field-wrap.is-active .app-topbar-date-label {
+  color: var(--accent);
+}
+
+.date-field-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: var(--radius-btn);
+  padding: 5px 11px 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  min-height: 28px;
+  min-width: 128px;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.date-field-trigger:hover {
+  border-color: var(--border-strong);
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
+}
+
+.date-field-wrap.is-active .date-field-trigger {
+  border-color: color-mix(in oklab, var(--accent) 62%, var(--border));
+  background: color-mix(in oklab, var(--accent) 10%, var(--card) 90%);
+  box-shadow: 0 0 0 2px var(--teal-glow);
+  color: color-mix(in oklab, var(--accent) 80%, var(--ink));
+}
+
+.date-field-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.date-field-wrap.is-active .date-field-icon {
+  opacity: 0.75;
+}
+
+.date-field-display {
+  flex: 1;
+  text-align: left;
+}
+
+.date-field-hidden-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+}
+
 .app-topbar-title {
   margin: 0;
   font-family: var(--font-display);
