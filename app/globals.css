@@ -535,43 +535,6 @@ select {
   100% { transform: translateX(140%); }
 }
 
-.dashboard-loading-banner {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  justify-self: end;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--card) 88%);
-  color: var(--ink-bright);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  box-shadow: 0 12px 24px -20px rgba(23, 34, 47, 0.35);
-  backdrop-filter: blur(8px);
-}
-
-.dashboard-loading-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
-  animation: dashboardPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes dashboardPulse {
-  0%, 100% {
-    transform: scale(0.96);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 28%, transparent);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent);
-  }
-}
 
 /* ─── Shared panel treatment ─── */
 
@@ -1585,41 +1548,6 @@ select {
   gap: 22px;
 }
 
-.overview-loading-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  margin: 6px 0 2px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--card) 90%);
-  color: var(--ink-bright);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.overview-loading-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
-  animation: overviewPulse 1.35s ease-in-out infinite;
-}
-
-@keyframes overviewPulse {
-  0%, 100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 32%, transparent);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent);
-  }
-}
 
 .overview-hero {
   display: flex;
@@ -3044,11 +2972,6 @@ select {
     padding: 6px 18px 2px;
   }
 
-  .dashboard-loading-banner {
-    justify-self: stretch;
-    width: 100%;
-    justify-content: center;
-  }
 
   .app-topbar {
     padding: 16px 18px;

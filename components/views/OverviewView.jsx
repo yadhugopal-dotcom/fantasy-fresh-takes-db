@@ -727,8 +727,6 @@ export default function OverviewContent({
   const podThroughputRows = Array.isArray(overviewData?.podThroughputRows) ? overviewData.podThroughputRows : [];
   const editorialPodRows = Array.isArray(overviewData?.editorialPodRows) ? overviewData.editorialPodRows : [];
   const podBreakdownRows = Array.isArray(overviewData?.podBreakdownRows) ? overviewData.podBreakdownRows : [];
-  const showRefreshingNote = Boolean(overviewLoading && overviewData);
-
   return (
     <ShareablePanel
       shareLabel={`Editorial Funnel ${weekLabel || "selected range"}`}
@@ -749,14 +747,6 @@ export default function OverviewContent({
         {notes.map((note) => (
           <div key={note} className="warning-note">{note}</div>
         ))}
-
-        {showRefreshingNote ? (
-          <div className="overview-loading-note" role="status" aria-live="polite">
-            <span className="overview-loading-dot" aria-hidden="true" />
-            Refreshing selected dates…
-          </div>
-        ) : null}
-
         {(() => {
           const breakdownTable = <PodBreakdownTable rows={podBreakdownRows} loading={overviewLoading} />;
           const throughputTable = <PodThroughputRankingTable rows={podThroughputRows} loading={overviewLoading} />;

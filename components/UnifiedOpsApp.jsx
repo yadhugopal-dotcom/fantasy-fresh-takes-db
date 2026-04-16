@@ -1441,12 +1441,6 @@ export default function UnifiedOpsApp() {
           {dashboardIsRefreshing ? (
             <div className="dashboard-loading-layer" aria-live="polite">
               <div className="dashboard-loading-strip" aria-hidden="true" />
-              {dashboardLoadingMessage ? (
-                <div className="dashboard-loading-banner" role="status">
-                  <span className="dashboard-loading-dot" aria-hidden="true" />
-                  <span>{dashboardLoadingMessage}</span>
-                </div>
-              ) : null}
             </div>
           ) : null}
 
