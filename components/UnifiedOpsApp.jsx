@@ -609,8 +609,7 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!overviewData && !cachedPayload) {
-            setOverviewData(buildDemoOverviewPayload(rangeSelection));
-            setOverviewError(`Demo mode: ${error.message || "Unable to load Overview metrics."}`);
+            setOverviewError(error.message || "Unable to load Overview metrics.");
           }
           setOverviewLoading(false);
           setDashboardLoadingMessage("");
@@ -669,8 +668,7 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!leadershipOverviewData && !cachedPayload) {
-            setLeadershipOverviewData(buildDemoLeadershipPayload(rangeSelection));
-            setLeadershipOverviewError(`Demo mode: ${error?.message || "Unable to load Overview."}`);
+            setLeadershipOverviewError(error?.message || "Unable to load Overview.");
           }
           setLeadershipOverviewLoading(false);
           setDashboardLoadingMessage("");
@@ -1007,8 +1005,7 @@ export default function UnifiedOpsApp() {
       } catch (error) {
         if (!cancelled) {
           if (!analyticsData && !cachedPayload) {
-            setAnalyticsData(buildDemoAnalyticsPayload(rangeSelection));
-            setAnalyticsError(`Demo mode: ${error.message || "Unable to load Analytics dashboard."}`);
+            setAnalyticsError(error.message || "Unable to load Analytics dashboard.");
           }
         }
       } finally {
@@ -1051,9 +1048,7 @@ export default function UnifiedOpsApp() {
       return payload;
     } catch (error) {
       if (!cancelState?.cancelled) {
-        const fallbackRange = buildDateRangeSelection(dashboardDateRange);
-        setAcdMetricsData(buildDemoProductionPayload(fallbackRange));
-        setAcdMetricsError(`Demo mode: ${error.message || "Unable to load ACD productivity."}`);
+        setAcdMetricsError(error.message || "Unable to load ACD productivity.");
       }
       throw error;
     } finally {
