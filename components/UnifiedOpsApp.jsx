@@ -10,7 +10,7 @@ import {
   isVisiblePlannerPodLeadName,
   shiftWeekKey,
 } from "../lib/tracker-data.js";
-import { buildDateRangeSelection, MIN_DASHBOARD_DATE, WEEK_VIEW_OPTIONS, buildMonthWeekFilterOptions, formatWeekRangeLabel, getMonthWeekSelectionByDate, getWeekSelection, getWeekViewLabel, normalizeWeekView } from "../lib/week-view.js";
+import { buildDateRangeSelection, MIN_DASHBOARD_DATE, WEEK_VIEW_OPTIONS, buildMonthWeekFilterOptions, buildStaticMonthWeekOptions, formatWeekRangeLabel, getMonthWeekSelectionByDate, getWeekSelection, getWeekViewLabel, normalizeWeekView } from "../lib/week-view.js";
 
 // ─── View imports ─────────────────────────────────────────────────────────────
 import DetailsContent from "./views/DetailsView.jsx";
@@ -18,7 +18,6 @@ import OverviewContent from "./views/OverviewView.jsx";
 import LeadershipOverviewContent from "./views/LeadershipOverviewView.jsx";
 import AnalyticsContent from "./views/AnalyticsView.jsx";
 import PodWiseContent, { PodTasksContent } from "./views/PodWiseView.jsx";
-import BeatsPerformanceContent from "./views/BeatsPerformanceView.jsx";
 import ProductionContent from "./views/ProductionView.jsx";
 import Planner2Content from "./views/Planner2View.jsx";
 import { PlannerErrorBoundary } from "./views/shared.jsx";
@@ -26,8 +25,6 @@ import { PlannerErrorBoundary } from "./views/shared.jsx";
 // ─── Shared utilities ─────────────────────────────────────────────────────────
 import {
   WRITER_TARGET_PER_WEEK,
-  BEATS_PERFORMANCE_CLIENT_CACHE_KEY,
-  BEATS_PERFORMANCE_CLIENT_CACHE_TTL_MS,
   formatNumber,
   formatDateLabel,
   getAcdTimeViewLabel,
@@ -395,7 +392,7 @@ function writeClientCache(key, payload) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const MORE_VIEWS = new Set(["details", "planner", "pod-wise"]);
+const MORE_VIEWS = new Set(["details", "planner"]);
 
 export default function UnifiedOpsApp() {
   const [activeView, setActiveView] = useState("leadership-overview");
@@ -414,7 +411,6 @@ export default function UnifiedOpsApp() {
   const [leadershipOverviewError, setLeadershipOverviewError] = useState("");
   const [competitionData, setCompetitionData] = useState(null);
   const [competitionLoading, setCompetitionLoading] = useState(true);
-  const [v2CompetitionData, setV2CompetitionData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState("");
@@ -431,13 +427,14 @@ export default function UnifiedOpsApp() {
   const [includeNewShowsPod, setIncludeNewShowsPod] = useState(false);
   const [notice, setNotice] = useState(null);
   const [podWiseView, setPodWiseView] = useState("performance");
+  const [productionSubView, setProductionSubView] = useState("pipeline");
+  const [productionExpanded, setProductionExpanded] = useState(false);
   const [podPerformanceRangeMode, setPodPerformanceRangeMode] = useState("selected");
   const [podPerformanceScope, setPodPerformanceScope] = useState("bau");
   const [podTasksData, setPodTasksData] = useState(null);
   const [podTasksLoading, setPodTasksLoading] = useState(false);
-  const [beatsPerformanceData, setBeatsPerformanceData] = useState(null);
-  const [beatsPerformanceLoading, setBeatsPerformanceLoading] = useState(false);
-  const [beatsPerformanceError, setBeatsPerformanceError] = useState("");
+  const [podTrendData, setPodTrendData] = useState(null);
+  const [podTrendLoading, setPodTrendLoading] = useState(false);
   const [dashboardLoadingMessage, setDashboardLoadingMessage] = useState("");
   const [planner2Data, setPlanner2Data] = useState(null);
   const [planner2Loading, setPlanner2Loading] = useState(false);
@@ -461,8 +458,6 @@ export default function UnifiedOpsApp() {
     activeView === "pod-wise" ||
     activeView === "analytics" ||
     activeView === "production" ||
-    activeView === "beats-performance" ||
-    activeView === "beats-performance-v2" ||
     activeView === "planner2";
   const headerDateRangeDisabled =
     (activeView === "overview" && overviewLoading) ||
@@ -470,11 +465,8 @@ export default function UnifiedOpsApp() {
     (activeView === "pod-wise" && competitionLoading) ||
     (activeView === "analytics" && analyticsLoading && !analyticsData) ||
     (activeView === "production" && acdMetricsLoading && !acdMetricsData) ||
-    (activeView === "beats-performance" && beatsPerformanceLoading && !beatsPerformanceData) ||
-    (activeView === "beats-performance-v2" && beatsPerformanceLoading && !beatsPerformanceData) ||
     (activeView === "planner2" && planner2Loading && !planner2Data);
-  const weekFilterSourceRows = leadershipOverviewData?.allBeatRows || overviewData?.allBeatRows || beatsPerformanceData?.rows || [];
-  const monthWeekOptions = useMemo(() => buildMonthWeekFilterOptions(weekFilterSourceRows), [weekFilterSourceRows]);
+  const monthWeekOptions = useMemo(() => buildStaticMonthWeekOptions(MIN_DASHBOARD_DATE), []);
   const selectedMonthWeekOption = useMemo(
     () => monthWeekOptions.find((option) => option.id === weekFilterSelection) || monthWeekOptions[0] || null,
     [monthWeekOptions, weekFilterSelection]
@@ -595,6 +587,7 @@ export default function UnifiedOpsApp() {
   const analyticsSubtitle = useMemo(() => buildAnalyticsSubtitle(analyticsData), [analyticsData]);
   const dashboardIsRefreshing = Boolean(dashboardLoadingMessage);
 
+
   useEffect(() => {
     if (activeView !== "overview") {
       return undefined;
@@ -656,7 +649,7 @@ export default function UnifiedOpsApp() {
   }, [activeView, dashboardDateRange, includeNewShowsPod]);
 
   useEffect(() => {
-    if (activeView !== "leadership-overview") {
+    if (activeView !== "leadership-overview" && activeView !== "overview") {
       return undefined;
     }
 
@@ -775,28 +768,6 @@ export default function UnifiedOpsApp() {
     };
   }, [activeView, podWiseView, dashboardDateRange, podPerformanceRangeMode, podPerformanceScope]);
 
-  useEffect(() => {
-    if (activeView !== "beats-performance-v2") return undefined;
-    const V2_CACHE_KEY = "beats-performance-v2-competition";
-    const cachedPayload = readClientCache(V2_CACHE_KEY);
-    if (cachedPayload) {
-      setV2CompetitionData(cachedPayload);
-    }
-    let cancelled = false;
-    async function loadV2Competition() {
-      try {
-        const response = await fetch("/api/dashboard/competition?mode=lifetime&scope=bau", { cache: "no-store" });
-        const payload = await readJson(response);
-        if (!response.ok) throw new Error(payload.error || "Unable to load competition data.");
-        if (!cancelled) {
-          setV2CompetitionData(payload);
-          writeClientCache(V2_CACHE_KEY, payload);
-        }
-      } catch {}
-    }
-    void loadV2Competition();
-    return () => { cancelled = true; };
-  }, [activeView]);
 
   useEffect(() => {
     if (activeView !== "pod-wise" || podWiseView !== "tasks") {
@@ -840,85 +811,24 @@ export default function UnifiedOpsApp() {
   }, [activeView, podWiseView, podTasksData]);
 
   useEffect(() => {
-    if (activeView !== "beats-performance" && activeView !== "beats-performance-v2") {
-      return undefined;
-    }
-
+    if (activeView !== "pod-wise") return undefined;
+    if (podTrendData) return undefined;
     let cancelled = false;
-
-    async function loadBeatsPerformance() {
-      setDashboardLoadingMessage("Refreshing Beats Performance…");
-      let hasCachedPayload = false;
-
+    async function loadPodTrend() {
+      setPodTrendLoading(true);
       try {
-        const cachedPayload = window.localStorage.getItem(BEATS_PERFORMANCE_CLIENT_CACHE_KEY);
-        if (cachedPayload) {
-          const parsedCache = JSON.parse(cachedPayload);
-          if (
-            parsedCache &&
-            typeof parsedCache === "object" &&
-            parsedCache.payload &&
-            Number.isFinite(parsedCache.savedAt) &&
-            Date.now() - parsedCache.savedAt < BEATS_PERFORMANCE_CLIENT_CACHE_TTL_MS
-          ) {
-            hasCachedPayload = true;
-            if (!cancelled) {
-              setBeatsPerformanceData({ ...parsedCache.payload, warnings: [] });
-              setBeatsPerformanceError("");
-              setBeatsPerformanceLoading(true);
-            }
-          }
-        }
-      } catch {}
-
-      if (!hasCachedPayload) {
-        setBeatsPerformanceError("");
-      }
-      setBeatsPerformanceLoading(true);
-
-      try {
-        const response = await fetch("/api/dashboard/beats-performance");
+        const response = await fetch("/api/dashboard/pod-trend", { cache: "no-store" });
         const payload = await readJson(response);
-        if (!response.ok || payload.ok === false) {
-          throw new Error(payload.error || "Unable to load beats performance dashboard.");
-        }
-
-        if (!cancelled) {
-          setBeatsPerformanceData(payload);
-          setBeatsPerformanceError("");
-          setBeatsPerformanceLoading(false);
-          setDashboardLoadingMessage("");
-        }
-
-        try {
-          window.localStorage.setItem(
-            BEATS_PERFORMANCE_CLIENT_CACHE_KEY,
-            JSON.stringify({
-              savedAt: Date.now(),
-              payload,
-            })
-          );
-        } catch {}
-      } catch (error) {
-        if (!cancelled) {
-          if (!hasCachedPayload) {
-            setBeatsPerformanceData(null);
-            setBeatsPerformanceError(error.message || "Unable to load beats performance dashboard.");
-          }
-        }
+        if (!cancelled) setPodTrendData(payload);
+      } catch {
+        if (!cancelled) setPodTrendData(null);
       } finally {
-        if (!cancelled) {
-          setBeatsPerformanceLoading(false);
-          setDashboardLoadingMessage("");
-        }
+        if (!cancelled) setPodTrendLoading(false);
       }
     }
-
-    void loadBeatsPerformance();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeView]);
+    void loadPodTrend();
+    return () => { cancelled = true; };
+  }, [activeView, podTrendData]);
 
   useEffect(() => {
     if (activeView !== "planner2") {
@@ -1279,13 +1189,11 @@ export default function UnifiedOpsApp() {
   const activeViewLabelMap = {
     "leadership-overview": "Overview",
     overview: "Editorial Funnel",
-    "beats-performance": "Beats Performance",
-    "beats-performance-v2": "PODs Performance",
-    "pod-wise": "POD Wise",
+    "pod-wise": "PODs Performance",
     planner: "Planner",
     planner2: "Planner",
     analytics: "Analytics",
-    production: "Production",
+    production: productionSubView === "throughput" ? "Production Throughput" : "Production Pipeline",
     details: "Details",
   };
 
@@ -1306,11 +1214,50 @@ export default function UnifiedOpsApp() {
               {[
                 ["leadership-overview", "Overview"],
                 ["overview", "Editorial Funnel"],
-                ["beats-performance", "Beats Performance"],
-                ["beats-performance-v2", "PODs Performance"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`sidebar-link${activeView === id ? " active" : ""}`}
+                  onClick={() => setActiveView(id)}
+                >
+                  {label}
+                </button>
+              ))}
+
+              {/* Production expandable group */}
+              <button
+                type="button"
+                className={`sidebar-link${activeView === "production" ? " active" : ""}`}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                onClick={() => {
+                  if (activeView !== "production") setActiveView("production");
+                  setProductionExpanded((prev) => !prev);
+                }}
+              >
+                <span>Production</span>
+                <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4, transition: "transform 0.2s", display: "inline-block", transform: productionExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+              </button>
+              {productionExpanded && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 12 }}>
+                  {[["pipeline", "Pipeline"], ["throughput", "Throughput"]].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`sidebar-link${activeView === "production" && productionSubView === id ? " active" : ""}`}
+                      style={{ fontSize: 12, paddingTop: 5, paddingBottom: 5 }}
+                      onClick={() => { setActiveView("production"); setProductionSubView(id); }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {[
+                ["pod-wise", "PODs Performance"],
                 ["planner2", "Planner"],
                 ["analytics", "Analytics"],
-                ["production", "Production"],
               ].map(([id, label]) => (
                 <button
                   key={id}
@@ -1334,29 +1281,31 @@ export default function UnifiedOpsApp() {
               <span>MORE</span>
               <span className="sidebar-more-chevron" style={{ transform: (moreExpanded || MORE_VIEWS.has(activeView)) ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
             </button>
-            {(moreExpanded || MORE_VIEWS.has(activeView)) && (
-              <div className="sidebar-more-items">
-                {[
-                  ["details", "Details"],
-                  ["planner", "Planner"],
-                  ["pod-wise", "POD Wise"],
-                ].map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`sidebar-link${activeView === id ? " active" : ""}`}
-                    onClick={() => setActiveView(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div
+              className="sidebar-more-items"
+              style={{ display: moreExpanded || MORE_VIEWS.has(activeView) ? "flex" : "none" }}
+              aria-hidden={!(moreExpanded || MORE_VIEWS.has(activeView))}
+            >
+              {[
+                ["details", "Details"],
+                ["planner", "Planner"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`sidebar-link${activeView === id ? " active" : ""}`}
+                  onClick={() => setActiveView(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </nav>
 
         <main className="ops-main">
           <div className="app-topbar">
+            <div className={`topbar-progress${dashboardIsRefreshing ? " is-active" : ""}`} aria-hidden="true" />
             <div className="app-topbar-copy">
               <h1 className="app-topbar-title">{activeViewLabelMap[activeView] || "Dashboard"}</h1>
             </div>
@@ -1515,7 +1464,6 @@ export default function UnifiedOpsApp() {
               </div>
             ) : null}
               <label className="theme-switch" aria-label="Toggle dark mode">
-                <span className="theme-switch-label">{themeMode === "dark" ? "Dark" : "Light"}</span>
                 <input
                   type="checkbox"
                   role="switch"
@@ -1528,12 +1476,6 @@ export default function UnifiedOpsApp() {
               </label>
             </div>
           </div>
-
-          {dashboardIsRefreshing ? (
-            <div className="dashboard-loading-layer" aria-live="polite">
-              <div className="dashboard-loading-strip" aria-hidden="true" />
-            </div>
-          ) : null}
 
           <div className={`ops-shell ${dashboardIsRefreshing ? "is-refreshing" : ""}`}>
             {activeView === "leadership-overview" ? (
@@ -1557,6 +1499,8 @@ export default function UnifiedOpsApp() {
                   overviewError={overviewError}
                   acdMetricsData={acdMetricsData}
                   acdMetricsLoading={acdMetricsLoading}
+                  leadershipOverviewData={leadershipOverviewData}
+                  leadershipOverviewLoading={leadershipOverviewLoading}
                   onShare={copySection}
                   copyingSection={copyingSection}
                   includeNewShowsPod={includeNewShowsPod}
@@ -1593,6 +1537,8 @@ export default function UnifiedOpsApp() {
                     onPerformanceRangeModeChange={setPodPerformanceRangeMode}
                     performanceScope={podPerformanceScope}
                     onPerformanceScopeChange={setPodPerformanceScope}
+                    podTrendData={podTrendData}
+                    podTrendLoading={podTrendLoading}
                     onShare={copySection}
                     copyingSection={copyingSection}
                   />
@@ -1607,21 +1553,6 @@ export default function UnifiedOpsApp() {
               </div>
             ) : null}
 
-            {activeView === "beats-performance" || activeView === "beats-performance-v2" ? (
-              <div className="section-shell">
-                <BeatsPerformanceContent
-                  beatsPerformanceData={beatsPerformanceData}
-                  beatsPerformanceLoading={beatsPerformanceLoading}
-                  beatsPerformanceError={beatsPerformanceError}
-                  onShare={copySection}
-                  copyingSection={copyingSection}
-                  onNavigate={setActiveView}
-                  selectedDateRange={dashboardDateRange}
-                  isV2={activeView === "beats-performance-v2"}
-                  competitionPodRows={v2CompetitionData?.podRows}
-                />
-              </div>
-            ) : null}
 
             {activeView === "planner" ? (
               <div className="section-shell">
@@ -1674,6 +1605,7 @@ export default function UnifiedOpsApp() {
                   busyAction={busyAction}
                   onShare={copySection}
                   copyingSection={copyingSection}
+                  productionSubView={productionSubView}
                 />
               </div>
             ) : null}
